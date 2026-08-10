@@ -564,3 +564,49 @@ Beş unsafe yol gerçek MCP çağrısında reddedildi. MCP süreci kapatılıp y
 ### Sonuç
 
 Tek bilgisayarda kalıcı proje devamlılığı hedefinin teknik kabul testi geçti. Ana bilgisayarda ayrı bir test zorunlu değil; ana bilgisayar kurulum hedefidir. Taşıma öncesinde bu değişiklikler gözden geçirilmeli, commit edilmeli ve `origin` remote'una gönderilmelidir.
+
+## 2026-08-10 — Agent Handoff Demo başlangıcı
+
+### Amaç
+
+Konuşma geçmişine erişimi olmayan yeni bir Codex veya Claude Code oturumunun Obsidian'daki kalıcı proje bağlamından gerçek geliştirmeye devam edebildiğini sınamak.
+
+### Oluşturulan test projesi
+
+- Konum: `examples/agent-handoff-demo`
+- Dil: Python 3.11+
+- V1 bağımlılık politikası: standard library only
+- İlk çalışan komut: `status`
+- İlk test: CLI'ın `agent-handoff-demo: ready` çıktısını ve sıfır exit code'u doğruluyor
+- Paylaşılan agent talimatları: `AGENTS.md` ve `CLAUDE.md`
+- İlk roadmap: `add`, `list`, ardından `complete`, son olarak yeni agent handoff kabulü
+
+### Obsidian proje hafızası
+
+- Test vault içinde `PROJECT_MEMORY_ROOT=agent-handoff-demo` kullanıldı.
+- Yedi varsayılan proje belgesi ilk çağrıda oluşturuldu.
+- `PROJECT.md`, `ROADMAP.md` ve `TODO.md` demo hedefleriyle dolduruldu.
+- `bootstrap-codex` session kaydı append-only olarak oluşturuldu.
+- `STATE`, `HANDOFF`, `DECISIONS` ve `PROGRESS` checkpoint ile güncellendi.
+- Checkpoint sonrasında yedi context belgesinin tamamı `loaded` olarak geri okundu.
+- Sonraki küçük dilim: yeni bir agent taskında context'i yükleyip `add` ve `list` özelliklerini testleriyle uygulamak.
+
+### Yerel Codex yapılandırması
+
+- Demo klasöründe proje-scope `.codex/config.toml` oluşturuldu.
+- Dosya bilgisayara özgü mutlak yollar içerdiği için demo `.gitignore` dosyasıyla Git dışında bırakıldı.
+- MCP root'u yalnız bu demo için `agent-handoff-demo` olarak ayarlandı.
+- Yapılandırma TOML parser ile doğrulandı.
+- Gerçek API anahtarı yapılandırmaya yazılmadı. Yeni Codex sürecinden forward edilmeli veya server repo kökündeki Git-ignore `.env` dosyasından yüklenmelidir.
+
+### Doğrulama
+
+- Demo CLI: başarılı.
+- Demo unittest: `1 passed`.
+- Canlı Obsidian init, checkpoint ve context recovery: başarılı.
+- Ana sunucu testleri: `150 passed`.
+- Pyright: `0 errors, 0 warnings`.
+
+### Devam koşulu
+
+Yeni Codex taskı açılmadan önce `OBSIDIAN_API_KEY` yeni Codex sürecinin ortamında bulunmalı veya server repo kökünde yalnız yerelde tutulan `.env` dosyasına eklenmelidir. Ardından yeni task çalışma dizini `examples/agent-handoff-demo` seçilmeli ve ilk işlem `project_get_context` olmalıdır.

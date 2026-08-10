@@ -271,6 +271,14 @@ For a shared Claude Code/Codex installation, use the
 [Main Computer Setup](docs/MAIN_COMPUTER_SETUP.md) and adopt the
 [Agent Memory Protocol](docs/AGENT_MEMORY_PROTOCOL.md).
 
+### Agent handoff demo
+
+[`examples/agent-handoff-demo`](examples/agent-handoff-demo) is a deliberately
+small Python CLI project for testing continuity across fresh Codex and Claude
+Code sessions. Its first session initializes Obsidian memory under
+`PROJECT_MEMORY_ROOT=agent-handoff-demo`; subsequent agents implement small
+roadmap slices after loading that persisted context.
+
 ### Debugging
 
 Since MCP servers run over stdio, debugging can be challenging. For the best debugging

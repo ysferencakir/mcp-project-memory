@@ -28,5 +28,8 @@ dev = [
 pythonpath = ["src"]
 testpaths = ["tests"]
 
+[tool.pyright]
+extraPaths = ["examples/agent-handoff-demo/src"]
+
 [project.scripts]
 mcp-obsidian = "mcp_obsidian:main"
