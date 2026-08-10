@@ -21,7 +21,10 @@ def _run(awaitable: Awaitable[T]) -> T:
 
 
 def test_registered_tools_include_expected_new_and_existing_tools():
-    names = {tool.name for tool in _run(server.list_tools())}
+    names = {
+        handler.get_tool_description().name
+        for handler in server.tool_handlers.values()
+    }
 
     assert {
         "obsidian_list_files_in_vault",
@@ -37,6 +40,19 @@ def test_registered_tools_include_expected_new_and_existing_tools():
         "project_get_context",
         "project_checkpoint",
     }.issubset(names)
+
+
+def test_initialization_advertises_project_memory_instructions():
+    options = server.app.create_initialization_options()
+
+    assert options.server_name == "mcp-project-memory"
+    assert options.server_version == "0.2.2"
+    assert options.instructions == server.SERVER_INSTRUCTIONS
+    assert options.instructions.startswith(
+        "This server is the durable project-memory authority"
+    )
+    assert "call project_get_context" in options.instructions
+    assert "call project_checkpoint" in options.instructions
 
 
 def test_get_tool_handler_returns_none_for_unknown_tool():

@@ -65,6 +65,11 @@ docker build --pull -t mcp-project-memory:local .
 Image API anahtarını içermez, kilitli `uv.lock` bağımlılıklarını kullanır ve
 root olmayan `mcp` kullanıcısıyla çalışır.
 
+MCP Python SDK `1.6.0` sürümüne sabitlenmiştir. Upstream'in kullandığı
+düşük seviyeli Server API'sini koruyan ve Work/Codex için initialization
+`instructions` alanını desteklediği doğrulanan kontrollü uyumluluk
+yükseltmesidir; genel bir bağımlılık yükseltmesi değildir.
+
 ### 3. Obsidian bağlantısını hazırlayın
 
 1. Kullanılacak vault'u Obsidian'da açın.
@@ -84,36 +89,49 @@ içine yazmayın.
 - Başında `/` kullanmayın, `..` kullanmayın ve Windows `\` ayıracı
   kullanmayın.
 
-Codex veya Claude'u başlatacağınız PowerShell oturumunda:
+ChatGPT masaüstü Work mode için değişkenleri Windows kullanıcı ortamında
+tanımlayın:
 
 ```powershell
-$env:OBSIDIAN_API_KEY = "LOCAL_REST_API_KEY"
-$env:PROJECT_MEMORY_ROOT = "Projects/MyExistingApp"
+[Environment]::SetEnvironmentVariable("OBSIDIAN_API_KEY", "LOCAL_REST_API_KEY", "User")
+[Environment]::SetEnvironmentVariable("PROJECT_MEMORY_ROOT", "Projects/MyExistingApp", "User")
 ```
 
-Vault yalnız bir projeyse ikinci değer `""` olabilir. Masaüstü uygulamasını
-zaten açık bıraktıysanız yeni ortam değişkenlerini görmez; uygulamayı bu
-değişkenlerin bulunduğu kullanıcı/oturum ortamından yeniden başlatın.
+Anahtar değeri yalnızca Local REST API token'ı olmalıdır; başına
+`Bearer ` eklemeyin. Vault yalnız bir projeyse ikinci değer `""` olabilir.
+Masaüstü uygulamasını tamamen kapatıp yeniden açmadan yeni değişkenler
+görülmez.
 
 Hazır şablon için
 [`project-memory.env.ps1.example`](docs/config-examples/project-memory.env.ps1.example)
 dosyasını Git-ignore edilen `.project-memory.env.ps1` adına kopyalayabilirsiniz.
 
-### 5. Codex'i bağlayın
+### 5. ChatGPT Work mode ve Codex'i bağlayın
 
-Hedef kaynak kod reposunda:
+Work mode her sohbetten aynı sunucuyu görebilsin diye kullanıcı-geneli
+`%USERPROFILE%\.codex\config.toml` dosyasını kullanın:
 
 ```powershell
-New-Item -ItemType Directory -Force .codex
-Copy-Item C:\Tools\mcp-project-memory\docs\config-examples\codex-docker-config.toml.example .codex\config.toml
+$codexConfigDir = Join-Path $env:USERPROFILE ".codex"
+New-Item -ItemType Directory -Force $codexConfigDir
+notepad (Join-Path $codexConfigDir "config.toml")
+```
+
+Mevcut ayarları silmeden
+[`codex-docker-config.toml.example`](docs/config-examples/codex-docker-config.toml.example)
+içindeki `[mcp_servers.project_memory]` bloğunu dosyaya bir kez ekleyin.
+Ardından masaüstü uygulamasını yeniden başlatın veya CLI'da:
+
+```powershell
 codex mcp list
 ```
 
 Codex TUI veya masaüstü uygulamasında `/mcp` görünümünde `project_memory`
-sunucusunu ve toplam 19 aracı doğrulayın. Codex proje düzeyindeki
-`.codex/config.toml` dosyasını yalnız güvenilen projelerde yükler. Codex'in
-masaüstü, CLI ve IDE istemcileri aynı host yapılandırmasını paylaşır; güncel
-biçim için [resmi OpenAI MCP belgesine](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)
+sunucusunu ve toplam 19 aracı doğrulayın. Proje kapsamındaki
+`.codex/config.toml` yalnız güvenilen Codex projelerinde yüklenir ve Work mode
+için önerilen ana yapılandırma değildir. Masaüstü, CLI ve IDE istemcileri aynı
+host yapılandırmasını paylaşır; güncel biçim için
+[resmi OpenAI MCP belgesine](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)
 bakın.
 
 ### 6. Claude Code'u bağlayın
@@ -175,9 +193,16 @@ Dosya adları yapılandırma sınırındadır; gerekirse
 
 ## Agent'a kalıcı talimat ekleme
 
-MCP'nin bağlı olması tek başına devamlılığı garanti etmez. Hedef kod reposunda
-Codex için `AGENTS.md`, Claude Code için `CLAUDE.md` içine aynı hafıza
-protokolünü koyun. Hazır metin:
+Sunucu, MCP initialization yanıtında kalıcı hafıza protokolünü
+`instructions` alanıyla istemciye bildirir. ChatGPT masaüstü Work mode ve
+Codex yeni bir sohbet veya anlamlı proje işi başlarken
+`project_get_context`, anlamlı iş veya handoff sonunda `project_checkpoint`
+kullanma yönlendirmesini bu alandan alır. Kullanıcının her sohbette başlangıç
+prompt'unu yeniden vermesi beklenmez.
+
+MCP istemcisinin talimat desteği olmadığı veya ek koruma istendiği durumda
+hedef kod reposunda Codex için `AGENTS.md`, Claude Code için `CLAUDE.md` içine
+aynı hafıza protokolü konabilir. Hazır metin:
 
 [`agent-memory-instructions.md.example`](docs/config-examples/agent-memory-instructions.md.example)
 
@@ -191,7 +216,11 @@ Copy-Item C:\Tools\mcp-project-memory\docs\config-examples\agent-memory-instruct
 Projede mevcut bir `AGENTS.md` veya `CLAUDE.md` varsa dosyayı değiştirmek
 yerine şablondaki “Project memory protocol” bölümünü mevcut talimata ekleyin.
 
-## Her oturumda kullanılacak prompt'lar
+## İsteğe bağlı kurtarma prompt'ları
+
+Aşağıdaki prompt'lar normal günlük kullanımda zorunlu değildir. Yalnız
+istemci sunucu talimatını uygulamadığında veya yarım kalan bir oturumu elle
+kurtarmak gerektiğinde kullanılır.
 
 ### Oturum başlangıcı
 

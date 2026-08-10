@@ -27,7 +27,18 @@ api_key = os.getenv("OBSIDIAN_API_KEY")
 if not api_key:
     raise ValueError(f"OBSIDIAN_API_KEY environment variable required. Working directory: {os.getcwd()}")
 
-app = Server("mcp-obsidian")
+SERVER_INSTRUCTIONS = """This server is the durable project-memory authority for the project selected by PROJECT_MEMORY_ROOT. At the start of every new conversation or meaningful project task, before planning or editing, call project_get_context and use the returned STATE, HANDOFF, ROADMAP, TODO, DECISIONS, PROGRESS, and session links as the source of truth; do not rely on chat history alone. Report missing, truncated, or omitted context explicitly.
+
+Call project_init only when project_get_context confirms that memory is not initialized and initialization is intended; it preserves existing files. Keep all project-memory writes inside PROJECT_MEMORY_ROOT. Prefer project_create_file_safe for new notes. Treat overwrite and delete tools as destructive and require clear user intent. Do not write concurrently with another agent using the same project root.
+
+Before completing meaningful work or handing off, verify the work, reconcile ROADMAP and TODO with evidence, leave partial or uncertain items open, read changed planning documents back, and call project_checkpoint with an honest summary, completed work, changed files, verification, decisions, pending approvals, blockers, and next steps. Do not claim that context was persisted unless the checkpoint succeeds and returns a session path. A simple read-only answer that does not advance the project does not require a checkpoint."""
+
+
+app = Server(
+    "mcp-project-memory",
+    version="0.2.2",
+    instructions=SERVER_INSTRUCTIONS,
+)
 
 tool_handlers = {}
 def add_tool_handler(tool_class: tools.ToolHandler):

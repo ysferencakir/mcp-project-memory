@@ -2,7 +2,9 @@
 
 Bu protokol, Claude Code ve Codex'in aynı Obsidian vault'unu sıralı biçimde
 ortak proje hafızası olarak kullanması içindir. V1 eşzamanlı yazmayı güvenli
-kabul etmez.
+kabul etmez. Sunucu bu protokolün kritik kurallarını MCP initialization
+`instructions` alanında istemciye otomatik bildirir; normal kullanımda her
+sohbet için ayrı bir başlangıç prompt'u gerekmez.
 
 ## Oturum başlangıcı
 

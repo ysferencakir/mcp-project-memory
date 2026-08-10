@@ -57,46 +57,55 @@ Projects/MyExistingApp
 Başında slash, `..`, ters slash veya URL-encoded parça kullanmayın. Vault
 yalnız bu projeye aitse kök boş bırakılabilir.
 
-## 5. Yerel ortamı hazırlayın
+## 5. Work mode ortamını hazırlayın
 
-Sunucu reposunda:
+ChatGPT masaüstü Work mode her yeni sohbette aynı sunucuya ulaşabilsin diye
+değişkenleri Windows kullanıcı ortamında tanımlayın:
 
 ```powershell
-Copy-Item docs\config-examples\project-memory.env.ps1.example .project-memory.env.ps1
+[Environment]::SetEnvironmentVariable("OBSIDIAN_API_KEY", "LOCAL_REST_API_KEY", "User")
+[Environment]::SetEnvironmentVariable("PROJECT_MEMORY_ROOT", "Projects/MyExistingApp", "User")
 ```
 
-Git-ignore edilen dosyada değerleri düzenleyin:
+Anahtar değerine `Bearer ` öneki eklemeyin. Anahtarı ekrana yazdırmadan
+tanımları doğrulayın:
 
 ```powershell
-$env:OBSIDIAN_API_KEY = "LOCAL_REST_API_KEY"
-$env:MCP_PROJECT_MEMORY_REPO = "C:\Tools\mcp-project-memory"
-$env:PROJECT_MEMORY_ROOT = "Projects/MyExistingApp"
+[Environment]::GetEnvironmentVariable("PROJECT_MEMORY_ROOT", "User")
+if ([Environment]::GetEnvironmentVariable("OBSIDIAN_API_KEY", "User")) {
+    "OBSIDIAN_API_KEY tanımlı"
+}
 ```
 
-Codex CLI veya Claude Code'u başlatacağınız PowerShell'de yükleyin:
+API anahtarı Windows kullanıcı ortamında düz metin olarak saklanır; bu
+V1'in tek kullanıcılı yerel kurulum tercihidir. Anahtarı Git'e veya izlenen bir
+dosyaya yazmayın. Değişiklikten sonra ChatGPT masaüstü uygulaması tamamen
+kapatılıp yeniden açılmalıdır.
+
+## 6. Work mode ve Codex yapılandırması
+
+Kullanıcı-geneli Codex yapılandırmasını açın:
 
 ```powershell
-. C:\Tools\mcp-project-memory\.project-memory.env.ps1
+$codexConfigDir = Join-Path $env:USERPROFILE ".codex"
+New-Item -ItemType Directory -Force $codexConfigDir
+notepad (Join-Path $codexConfigDir "config.toml")
 ```
 
-Bu değişkenler yalnız o süreç ve alt süreçleri için geçerlidir. Masaüstü
-uygulaması kullanılacaksa değişkenleri görecek biçimde yeniden başlatılmalıdır.
-API anahtarını izlenen dosyaya yazmayın.
-
-## 6. Codex yapılandırması
-
-Mevcut kaynak kod reposunda:
+Mevcut ayarları silmeden
+`C:\Tools\mcp-project-memory\docs\config-examples\codex-docker-config.toml.example`
+içindeki `[mcp_servers.project_memory]` bloğunu dosyaya bir kez ekleyin.
+ChatGPT masaüstü uygulamasını tamamen yeniden başlatın. CLI doğrulaması
+için:
 
 ```powershell
-Set-Location C:\Projects\MyExistingApp
-New-Item -ItemType Directory -Force .codex
-Copy-Item C:\Tools\mcp-project-memory\docs\config-examples\codex-docker-config.toml.example .codex\config.toml
 codex mcp list
 ```
 
-Codex'te `/mcp` görünümünde `project_memory` ve 19 araç görünmelidir. Proje
-kapsamındaki `.codex/config.toml` yalnız güvenilen projelerde yüklenir. Resmi
-biçim: [OpenAI MCP belgeleri](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+Work mode veya Codex'te `/mcp` görünümünde `project_memory` ve 19 araç
+görünmelidir. Proje kapsamındaki `.codex/config.toml` Work mode için ana
+yapılandırma değildir. Resmi biçim:
+[OpenAI MCP belgeleri](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 
 ## 7. Claude Code yapılandırması
 
@@ -116,7 +125,10 @@ hafıza akışını kullanabilir.
 
 ## 8. Agent talimat dosyaları
 
-Hazır protokolü hedef kaynak kod reposuna kopyalayın:
+MCP sunucusu hafıza protokolünü initialization `instructions` alanıyla Work
+mode ve Codex'e otomatik bildirir. Her yeni sohbete ayrıca başlangıç prompt'u
+vermek gerekmez. MCP talimatlarını desteklemeyen istemciler veya ek koruma
+için hazır protokol hedef kaynak kod reposuna kopyalanabilir:
 
 ```powershell
 Copy-Item C:\Tools\mcp-project-memory\docs\config-examples\agent-memory-instructions.md.example AGENTS.md
