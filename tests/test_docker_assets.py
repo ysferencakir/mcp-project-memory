@@ -38,12 +38,13 @@ def test_codex_docker_config_preserves_stdio_and_secret_forwarding():
     server = config["mcp_servers"]["project_memory"]
 
     assert server["command"] == "docker"
-    assert server["env_vars"] == ["OBSIDIAN_API_KEY"]
+    assert server["env_vars"] == ["OBSIDIAN_API_KEY", "PROJECT_MEMORY_ROOT"]
     assert "-i" in server["args"]
     assert "-t" not in server["args"]
     assert server["args"][-1] == "mcp-project-memory:local"
     assert "--network" not in server["args"]
     assert "OBSIDIAN_HOST=host.docker.internal" in server["args"]
+    assert "PROJECT_MEMORY_ROOT" in server["args"]
 
 
 def test_claude_docker_config_is_valid_json_and_uses_same_image():
@@ -64,3 +65,4 @@ def test_claude_docker_config_is_valid_json_and_uses_same_image():
     assert "--network" not in server["args"]
     assert "OBSIDIAN_HOST=host.docker.internal" in server["args"]
     assert server["env"]["OBSIDIAN_API_KEY"] == "${OBSIDIAN_API_KEY}"
+    assert server["env"]["PROJECT_MEMORY_ROOT"] == "${PROJECT_MEMORY_ROOT}"

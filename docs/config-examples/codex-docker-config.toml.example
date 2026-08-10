@@ -1,7 +1,8 @@
 # Build the image as mcp-project-memory:local before using this configuration.
 # This example targets Docker Desktop on Windows/macOS. On Linux Docker Engine,
 # replace host.docker.internal with 127.0.0.1 and add --network host.
-# OBSIDIAN_API_KEY is inherited by `docker run`; do not put its value here.
+# OBSIDIAN_API_KEY and PROJECT_MEMORY_ROOT are inherited by `docker run`.
+# Set both before starting Codex; do not put the API key in this file.
 
 [mcp_servers.project_memory]
 command = "docker"
@@ -18,10 +19,10 @@ args = [
   "-e",
   "OBSIDIAN_PROTOCOL=https",
   "-e",
-  "PROJECT_MEMORY_ROOT=",
+  "PROJECT_MEMORY_ROOT",
   "mcp-project-memory:local",
 ]
-env_vars = ["OBSIDIAN_API_KEY"]
+env_vars = ["OBSIDIAN_API_KEY", "PROJECT_MEMORY_ROOT"]
 startup_timeout_sec = 30
 tool_timeout_sec = 60
 enabled = true

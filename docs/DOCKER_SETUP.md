@@ -69,8 +69,10 @@ anahtarını başlatan agent sürecinin ortamından alır. Gerçek anahtarı ör
 dosyalara, Dockerfile'a veya image build argümanlarına yazmayın. Linux Docker
 Engine'de örneklerden host override'ını kaldırıp `--network host` ekleyin.
 
-Her proje için `PROJECT_MEMORY_ROOT=` argümanını vault içindeki ilgili klasörle
-değiştirin. Aynı vault'a iki agent'ın eşzamanlı yazmaması V1'de hâlâ zorunludur.
+İstemciyi başlatmadan önce `PROJECT_MEMORY_ROOT` ortam değişkenini vault
+içindeki mevcut proje klasörüne ayarlayın. Örnekler bu değişkeni agent
+sürecinden `docker run -e PROJECT_MEMORY_ROOT` ile container'a aktarır. Aynı
+vault'a iki agent'ın eşzamanlı yazmaması V1'de hâlâ zorunludur.
 
 ## Kabul kontrolü
 
@@ -81,7 +83,7 @@ Docker bulunan hedef bilgisayarda sırasıyla:
 3. Gerçek stdio `initialize` ve `tools/list` çağrısı 19 aracı döndürmeli.
 4. `project_get_context` yapılandırılmış root'taki belgeleri yüklemeli.
 5. Container kapatılıp yeniden açıldıktan sonra aynı context geri gelmeli.
-6. Ana testler ve demo testleri ayrıca host geliştirme ortamında geçmeli.
+6. Ana regresyon testleri ayrıca host geliştirme ortamında geçmeli.
 
 ### Doğrulanmış test ortamı
 

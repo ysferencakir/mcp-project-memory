@@ -1,6 +1,0 @@
-__pycache__/
-*.py[cod]
-.venv/
-.handoff-demo.json
-.codex/config.toml
-

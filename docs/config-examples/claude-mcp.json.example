@@ -9,7 +9,7 @@
         "OBSIDIAN_HOST": "127.0.0.1",
         "OBSIDIAN_PORT": "27124",
         "OBSIDIAN_PROTOCOL": "https",
-        "PROJECT_MEMORY_ROOT": ""
+        "PROJECT_MEMORY_ROOT": "${PROJECT_MEMORY_ROOT}"
       }
     }
   }

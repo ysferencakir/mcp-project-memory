@@ -171,7 +171,8 @@ Bu senaryo tek bilgisayarda minimum proje devamlılığı hedefinin kabul testid
 
 ## Sonuç kaydı
 
-Smoke test sonunda aşağıdaki bilgileri repo `progress.md` dosyasına ve gerçek proje vault'undaki `PROGRESS.md` dosyasına kaydedin:
+Smoke test sonunda aşağıdaki bilgileri gerçek proje vault'undaki `PROGRESS.md`
+dosyasına checkpoint yoluyla kaydedin:
 
 - Tarih ve bilgisayar
 - Obsidian sürümü

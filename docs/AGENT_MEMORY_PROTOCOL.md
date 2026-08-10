@@ -11,8 +11,9 @@ kabul etmez.
 2. `project_get_context` çağır.
 3. Yanıtta `missing`, `truncated` veya `omitted` belgeler varsa bunları açıkça
    değerlendir; eksik bağlamı varmış gibi kabul etme.
-4. İlk kurulumsa yalnızca bir kez `project_init` çağır ve ardından tekrar
-   `project_get_context` ile oku.
+4. `PROJECT_MEMORY_ROOT` değerinin doğru mevcut proje klasörünü gösterdiğini
+   doğrula. İlk kurulumsa yalnızca bir kez `project_init` çağır; mevcut
+   dosyaları koru ve ardından tekrar `project_get_context` ile oku.
 5. Özellikle `STATE`, `HANDOFF`, açık işler, engeller ve bekleyen insan
    onaylarını çalışma planına yansıt.
 
@@ -77,8 +78,9 @@ eklenebilir:
 
 > Bu proje kalıcı bağlam için `project-memory` MCP sunucusunu kullanır. Anlamlı
 > çalışmaya başlamadan önce `project_get_context` çağır ve sonuçtaki eksik,
-> kırpılmış veya dışarıda bırakılmış belgeleri dikkate al. İlk boş vault'ta
-> `project_init` kullan. Anlamlı iş veya handoff sonunda önce doğrulanmış
+> kırpılmış veya dışarıda bırakılmış belgeleri dikkate al. Doğru proje kökünde
+> hafıza henüz yoksa `project_init` kullan ve mevcut dosyaları koru. Anlamlı iş
+> veya handoff sonunda önce doğrulanmış
 > sonuçlarla `ROADMAP` ve `TODO` checklist'lerini uzlaştır; belirsiz işleri
 > açık bırak. Ardından
 > `project_checkpoint` ile yapılanları, doğrulamaları, dosyaları, engelleri ve

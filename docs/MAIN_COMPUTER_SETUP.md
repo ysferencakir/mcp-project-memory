@@ -1,180 +1,165 @@
-# Ana Bilgisayar Kurulumu — V1
+# Ana bilgisayar kurulumu — mevcut proje
 
-Bu rehber tek bir bilgisayarda Claude Code ve Codex'in aynı Obsidian vault'unu
-ortak proje hafızası olarak kullanacağı ilk üretim-benzeri kurulumu tarif eder.
-İlk doğrulama gerçek proje vault'u yerine boş bir test vault'unda yapılmalıdır.
+Bu rehber `mcp-project-memory` sunucusunu yeni bir Windows bilgisayara kurup
+çalışan bir kaynak kod projesini mevcut Obsidian vault'uyla bağlamak içindir.
+Önerilen dağıtım Docker Desktop'tır: Obsidian ve vault Windows'ta, stdio MCP
+sunucusu container içinde çalışır.
 
-Python/venv yerine Docker ile kurulum yapmak için
-[Docker kurulumu](DOCKER_SETUP.md) belgesini kullanabilirsiniz. Docker yalnız
-MCP sunucusunu container'a alır; Obsidian ve vault ana bilgisayarda kalır.
+## 1. Kurulum sınırı
 
-## 1. Ön koşullar
+Kurulum şu üç konumu birbirinden ayırır:
+
+1. MCP sunucu reposu: örneğin `C:\Tools\mcp-project-memory`.
+2. Mevcut kaynak kod reposu: örneğin `C:\Projects\MyExistingApp`.
+3. Obsidian vault'u ve içindeki hafıza kökü: örneğin
+   `Projects/MyExistingApp`.
+
+Kaynak kod ile vault aynı klasör olmak zorunda değildir. Vault container'a
+mount edilmez. Mevcut vault önemli veri içeriyorsa önce yedek alın.
+
+## 2. Ön koşullar
 
 - Git
-- Python 3.11 veya üzeri
-- `uv`
+- Docker Desktop
 - Obsidian
-- Obsidian Local REST API community eklentisi `4.1.7`
-- Kullanılacak istemci: Codex, Claude Code veya ikisi
+- Obsidian Local REST API `4.1.7`
+- Codex veya Claude Code
 
-Her proje için ayrı vault açılması V1 çalışma modelidir. Aynı anda yalnızca
-çalışılan projeye ait vault açık ve hedeflenmiş olmalıdır.
+V1'in 15 upstream Obsidian aracı `4.1.7` ile doğrulanmıştır. Local REST API
+`5.x`, periodic-note endpoint'lerini kaldırdığı için tam V1 uyumluluk sürümü
+değildir.
 
-PowerShell'de `uv` komutunun gerçek yolunu şu komutla bulabilirsin:
-
-```powershell
-(Get-Command uv).Source
-```
-
-Komut bulunamıyorsa önce `uv` kurulmalı veya kurulu olduğu dizin `PATH` içine
-eklenmelidir. `uv` yalnız kurulum ve geliştirme sırasında gerekir; MCP
-istemcileri kurulumda oluşturulan sanal ortam giriş noktasını doğrudan çalıştırır.
-
-## 2. Sunucuyu kur
-
-Ana bilgisayarda repoyu kalıcı bir dizine clone et ve kilit dosyasını değiştirmeden
-bağımlılıkları kur:
+## 3. Sunucuyu kurun
 
 ```powershell
-git clone <REPOSITORY_URL> C:\Projects\mcp-project-memory
-Set-Location C:\Projects\mcp-project-memory
-uv sync --frozen --all-groups
-uv run --frozen pytest
+git clone https://github.com/ysferencakir/mcp-project-memory.git C:\Tools\mcp-project-memory
+Set-Location C:\Tools\mcp-project-memory
+docker build --pull -t mcp-project-memory:local .
 ```
 
-Testlerin tamamı geçmeden gerçek proje vault'una bağlanma. Sunucu stdio üzerinden
-çalıştığı için `mcp-obsidian` komutunu tek başına başlatınca terminalde beklemesi
-normaldir; asıl bağlantı doğrulaması istemci içinden yapılır.
+Docker Desktop çalışmıyorsa build başlamaz. Image root olmayan kullanıcıyla
+çalışır ve API anahtarı içermez.
 
-## 3. Boş test vault'unu hazırla
+## 4. Obsidian'ı hazırlayın
 
-1. Obsidian'da yalnız bu deneme için yeni ve boş bir vault oluştur.
-2. [Local REST API 4.1.7 release](https://github.com/coddingtonbear/obsidian-local-rest-api/releases/tag/4.1.7)
-   sayfasındaki `main.js`, `manifest.json` ve `styles.css` dosyalarını
-   `<vault>/.obsidian/plugins/obsidian-local-rest-api/` dizinine koy; Obsidian'ı
-   yeniden yükle ve eklentiyi etkinleştir. Mevcut 15 Obsidian aracının tamamı
-   için V1 uyumluluk sürümü `4.1.7`'dir; community directory güncel bir 5.x
-   sürümü kuruyorsa onu V1 kurulumu için kullanma.
-3. HTTPS portunu doğrula; varsayılan değer `27124`.
-4. API anahtarını kopyala fakat repodaki hiçbir izlenen dosyaya yazma.
+1. Kullanacağınız mevcut vault'u Obsidian'da açın.
+2. Local REST API eklentisini etkinleştirin.
+3. HTTPS portunu doğrulayın; varsayılan `27124`.
+4. Eklenti ayarındaki API anahtarını kopyalayın.
+5. Vault yalnız bu projeye ait değilse proje için bir alt klasör seçin.
 
-Ayrıntılı kabul senaryoları için
-[canlı Obsidian smoke testi](LIVE_OBSIDIAN_SMOKE_TEST.md) kullanılacaktır.
+`PROJECT_MEMORY_ROOT` vault'a göreli POSIX klasördür. Örnek:
 
-## 4. Yerel sırları hazırla
+```text
+Projects/MyExistingApp
+```
 
-Örnek PowerShell dosyasını Git tarafından yok sayılan yerel dosyaya kopyala:
+Başında slash, `..`, ters slash veya URL-encoded parça kullanmayın. Vault
+yalnız bu projeye aitse kök boş bırakılabilir.
+
+## 5. Yerel ortamı hazırlayın
+
+Sunucu reposunda:
 
 ```powershell
 Copy-Item docs\config-examples\project-memory.env.ps1.example .project-memory.env.ps1
 ```
 
-Dosyada API anahtarını ve bu reponun mutlak yolunu doldur. Ardından Claude Code
-veya Codex CLI'ı başlatacağın aynı PowerShell oturumunda yükle:
+Git-ignore edilen dosyada değerleri düzenleyin:
 
 ```powershell
-. .\.project-memory.env.ps1
+$env:OBSIDIAN_API_KEY = "LOCAL_REST_API_KEY"
+$env:MCP_PROJECT_MEMORY_REPO = "C:\Tools\mcp-project-memory"
+$env:PROJECT_MEMORY_ROOT = "Projects/MyExistingApp"
 ```
 
-Bu değişkenler yalnızca o PowerShell sürecine ve onun başlattığı alt süreçlere
-aktarılır. Codex masaüstü uygulaması kullanılacaksa uygulama bu değişkenleri
-görebilecek şekilde başlatılmalı veya `OBSIDIAN_API_KEY` Windows kullanıcı ortam
-değişkeni olarak ayrıca tanımlanıp uygulama yeniden başlatılmalıdır. Kullanıcı
-ortam değişkeninin Windows profilinde düz metin olarak tutulduğu unutulmamalıdır.
-
-Alternatif olarak sunucu repo kökündeki Git-ignore edilmiş `.env` dosyasını
-okuyabilir; ancak farklı çalışma dizinleri ve istemciler arasında en açık yol,
-anahtarı MCP istemcisinin ortamından sunucuya aktarmaktır.
-
-## 5. Codex yapılandırması
-
-[`codex-config.toml.example`](config-examples/codex-config.toml.example)
-içeriğini hedef projenin `.codex/config.toml` dosyasına veya kullanıcı düzeyindeki
-`~/.codex/config.toml` dosyasına ekle. `command` ve `cwd` alanlarındaki repo
-yolunu ana bilgisayara göre değiştir. `command`, kurulumda oluşturulan
-`.venv\Scripts\mcp-obsidian.exe` dosyasını doğrudan çalıştırır.
-
-Proje düzeyindeki yapılandırma her kod reposunun hangi hafıza sunucusunu
-kullandığını görünür kılar. API anahtarı dosyaya konmaz; `env_vars` aracılığıyla
-Codex sürecinin ortamından aktarılır.
-
-Doğrula:
+Codex CLI veya Claude Code'u başlatacağınız PowerShell'de yükleyin:
 
 ```powershell
+. C:\Tools\mcp-project-memory\.project-memory.env.ps1
+```
+
+Bu değişkenler yalnız o süreç ve alt süreçleri için geçerlidir. Masaüstü
+uygulaması kullanılacaksa değişkenleri görecek biçimde yeniden başlatılmalıdır.
+API anahtarını izlenen dosyaya yazmayın.
+
+## 6. Codex yapılandırması
+
+Mevcut kaynak kod reposunda:
+
+```powershell
+Set-Location C:\Projects\MyExistingApp
+New-Item -ItemType Directory -Force .codex
+Copy-Item C:\Tools\mcp-project-memory\docs\config-examples\codex-docker-config.toml.example .codex\config.toml
 codex mcp list
 ```
 
-Codex arayüzünde `/mcp` ile bağlantıyı ve 19 aracın görünürlüğünü kontrol et.
-Codex'in güncel resmi MCP belgelerine göre masaüstü uygulaması, CLI ve IDE
-uzantısı aynı Codex host yapılandırmasını paylaşır; proje düzeyindeki
-`.codex/config.toml` yalnız güvenilen projelerde yüklenir:
-[OpenAI MCP belgeleri](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+Codex'te `/mcp` görünümünde `project_memory` ve 19 araç görünmelidir. Proje
+kapsamındaki `.codex/config.toml` yalnız güvenilen projelerde yüklenir. Resmi
+biçim: [OpenAI MCP belgeleri](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
 
-## 6. Claude Code yapılandırması
+## 7. Claude Code yapılandırması
 
-[`claude-mcp.json.example`](config-examples/claude-mcp.json.example) dosyasını
-hedef kod reposunun köküne `.mcp.json` adıyla kopyala. Şablon sır içermez;
-`${OBSIDIAN_API_KEY}` ve `${MCP_PROJECT_MEMORY_REPO}` çalışma ortamından alınır.
+Claude Code kullanılacağı zaman mevcut kaynak kod reposunda:
 
 ```powershell
-Copy-Item C:\Projects\mcp-project-memory\docs\config-examples\claude-mcp.json.example .mcp.json
+Copy-Item C:\Tools\mcp-project-memory\docs\config-examples\claude-docker-mcp.json.example .mcp.json
 claude mcp list
 ```
 
-Claude Code proje kapsamındaki `.mcp.json` dosyasını ekipçe paylaşılabilir
-yapılandırma olarak destekler ve ilk kullanımda proje sunucusuna güven/onay
-isteyebilir. Ortam değişkeni genişletme sözdizimi de resmi olarak desteklenir:
-[Claude Code MCP belgeleri](https://code.claude.com/docs/en/mcp).
+İlk interaktif açılışta proje MCP sunucusunu onaylayın ve `/mcp` ile kontrol
+edin. `.mcp.json`, API anahtarını ve proje kökünü PowerShell ortamından alır.
+Resmi biçim: [Claude Code MCP belgeleri](https://code.claude.com/docs/en/mcp).
 
-Ekip büyüdüğünde `.mcp.json` repoya alınabilir; dosyada hiçbir sır bulunmamalıdır.
-Her geliştirici yalnız kendi `OBSIDIAN_API_KEY` ve `MCP_PROJECT_MEMORY_REPO`
-değerlerini yerel ortamında tanımlar.
+Claude aboneliği yoksa bu adım ertelenebilir; Codex tek başına aynı kalıcı
+hafıza akışını kullanabilir.
 
-## 7. Ortak agent davranışını tanımla
+## 8. Agent talimat dosyaları
 
-[Agent Memory Protocol](AGENT_MEMORY_PROTOCOL.md) içindeki kısa talimatı hedef
-projenin agent talimatlarına ekle. MCP'nin bağlı olması tek başına devamlılığı
-garanti etmez; her anlamlı oturumun başlangıcında context okunması ve sonunda
-checkpoint bırakılması gerekir.
+Hazır protokolü hedef kaynak kod reposuna kopyalayın:
 
-Minimum akış:
-
-```text
-ilk boş vault: project_init
-her oturum başı: project_get_context
-çalışma: obsidian_* ve güvenli project_* araçları
-anlamlı oturum sonu: project_checkpoint
-sonraki agent: project_get_context
+```powershell
+Copy-Item C:\Tools\mcp-project-memory\docs\config-examples\agent-memory-instructions.md.example AGENTS.md
+Copy-Item C:\Tools\mcp-project-memory\docs\config-examples\agent-memory-instructions.md.example CLAUDE.md
 ```
 
-## 8. Canlı kabul testi
+Mevcut talimat dosyaları varsa overwrite etmeyin; şablondaki bölümü mevcut
+dosyaya birleştirin.
 
-İki istemciden en az biriyle
-[LIVE_OBSIDIAN_SMOKE_TEST.md](LIVE_OBSIDIAN_SMOKE_TEST.md) adımlarını uygula.
-Ardından ikinci istemciyi başlat, `project_get_context` çağır ve ilk istemcinin
-checkpoint'ini değiştirmeden okuyabildiğini doğrula.
+## 9. Mevcut projeyi bootstrap edin
 
-Başarılı kabul ölçütleri:
+İlk agent'a README'deki “Mevcut projeyi ilk kez hafızaya alma” prompt'unu
+verin. Güvenli sıra:
 
-- 15 mevcut `obsidian_*` aracı kullanılabilir.
-- 4 `project_*` aracı kayıtlıdır.
-- `project_init` tekrar çağrıldığında mevcut içerik korunur.
-- Codex'in yazdığı checkpoint Claude Code tarafından veya tersi yönde okunur.
-- `PROGRESS.md` Obsidian içinde yapılan gelişmeleri gösterir.
-- Bekleyen kritik kararlar `pending_approvals` olarak görünür ve otomatik olarak
-  `DECISIONS.md` içine girmez.
-- MCP süreci yeniden başladıktan sonra bağlam vault'tan geri yüklenir.
+1. `project_get_context`
+2. Belgeler gerçekten yoksa bir kez `project_init`
+3. Kaynak repo incelemesi
+4. Kanıta dayalı PROJECT/STATE/ROADMAP/TODO içeriği
+5. Plan belgelerini geri okuma
+6. `project_checkpoint`
 
-## 9. Günlük çalışma kuralı
+`project_init` mevcut dosyaları korur. Yine de root yanlış vault klasörüne
+işaret ediyorsa devam etmeyin; önce `PROJECT_MEMORY_ROOT` değerini düzeltin.
 
-V1'de Claude Code ve Codex aynı vault'a eşzamanlı yazmamalıdır. Agent değişimi
-şu sırada yapılır:
+## 10. Kabul ölçütleri
 
-1. Aktif agent işi durdurur ve `project_checkpoint` çağırır.
-2. Checkpoint başarısı doğrulanır.
-3. Aktif agent kapanır veya yazmayı bırakır.
-4. Sonraki agent `project_get_context` ile başlar.
+- MCP sunucusu `/mcp` içinde bağlıdır.
+- Toplam 19 araç görünür.
+- `project_get_context` doğru vault yollarını gösterir.
+- Yedi varsayılan proje belgesi yüklenir.
+- Checkpoint sonrasında `sessions/...md`, STATE, HANDOFF ve PROGRESS Obsidian'da
+  görünür.
+- Container yeniden başladığında aynı checkpoint geri yüklenir.
+- `.env`, `.project-memory.env.ps1` ve API anahtarı Git'te değildir.
 
-Bu disiplin tek bilgisayarda bağlam kaybını önleyen ilk güvenilir tabandır.
-Revision/hash tabanlı eşzamanlılık koruması ancak gerçek kullanımda ihtiyaç
-kanıtlanırsa sonraki sürüme eklenmelidir.
+Ayrıntılı test için [canlı smoke testi](LIVE_OBSIDIAN_SMOKE_TEST.md) kullanın.
+
+## 11. Günlük agent değişimi
+
+1. Aktif agent testlerini çalıştırır.
+2. ROADMAP ve TODO'yu doğrulanmış sonuçlarla uzlaştırır.
+3. `project_checkpoint` çağırır ve session yolunu doğrular.
+4. Yazmayı bırakır.
+5. Sonraki agent `project_get_context` ile başlar.
+
+İki agent aynı vault/root'a aynı anda yazmamalıdır.

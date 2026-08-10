@@ -1,12 +1,12 @@
 # Copy this block into the target project's .codex/config.toml or into
 # ~/.codex/config.toml. Replace both absolute paths for the main computer.
-# Keep OBSIDIAN_API_KEY outside this file; Codex forwards it from its own
-# environment through env_vars.
+# Keep OBSIDIAN_API_KEY and PROJECT_MEMORY_ROOT outside this file; Codex
+# forwards them from its own environment through env_vars.
 
 [mcp_servers.project_memory]
 command = "C:\\ABSOLUTE\\PATH\\TO\\mcp-project-memory\\.venv\\Scripts\\mcp-obsidian.exe"
 cwd = "C:\\ABSOLUTE\\PATH\\TO\\mcp-project-memory"
-env_vars = ["OBSIDIAN_API_KEY"]
+env_vars = ["OBSIDIAN_API_KEY", "PROJECT_MEMORY_ROOT"]
 startup_timeout_sec = 20
 tool_timeout_sec = 60
 enabled = true
@@ -16,4 +16,3 @@ required = true
 OBSIDIAN_HOST = "127.0.0.1"
 OBSIDIAN_PORT = "27124"
 OBSIDIAN_PROTOCOL = "https"
-PROJECT_MEMORY_ROOT = ""
