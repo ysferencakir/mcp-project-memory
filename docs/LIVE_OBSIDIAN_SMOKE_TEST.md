@@ -1,6 +1,6 @@
 # Live Obsidian Smoke Test
 
-Bu kontrol listesi, birim ve MCP protokol testleri geçen sürümün ana bilgisayardaki gerçek Obsidian Local REST API ile doğrulanması içindir.
+Bu kontrol listesi, birim ve MCP protokol testleri geçen sürümün gerçek Obsidian Local REST API ile doğrulanması içindir.
 
 ## Güvenlik sınırı
 
@@ -16,7 +16,7 @@ Bu kontrol listesi, birim ve MCP protokol testleri geçen sürümün ana bilgisa
 2. `uv` kurulu.
 3. Repo ana bilgisayara klonlanmış.
 4. Obsidian kurulu ve test vault'u açık.
-5. Obsidian Local REST API community plugin'i kurulu ve etkin.
+5. Obsidian Local REST API community plugin `4.1.7` kurulu ve etkin.
 6. Plugin API anahtarı alınmış.
 7. HTTPS için varsayılan port `27124`; HTTP kullanılıyorsa plugin portuyla birlikte protokol açıkça ayarlanmış.
 
@@ -137,7 +137,7 @@ Aşağıdaki yolların her birini ayrı çağrıda deneyin ve reddedildiğini do
 
 Obsidian içinde doğrulayın:
 
-- `sessions/` altında zaman damgalı, `live-smoke-1` içeren yeni dosya vardır.
+- `sessions/live-smoke-1.md` append-only session kaydı vardır.
 - `STATE.md` güncel özeti ve sıradaki adımı içerir.
 - `HANDOFF.md` agent, session ve sıradaki adımı içerir.
 - `PROGRESS.md` yeni checkpoint başlığını ve session bağlantısını içerir.
@@ -178,3 +178,22 @@ Smoke test sonunda aşağıdaki bilgileri repo `progress.md` dosyasına ve gerç
 - Geçen/kalan senaryolar
 - Gözlenen hata mesajları
 - Gerçek proje vault'una geçiş kararı
+
+## Doğrulanmış V1 referans sonucu — 2026-08-10
+
+- Test bilgisayarı, ayrı ve boş test vault'u
+- Obsidian `1.13.4`
+- Local REST API `4.1.7`
+- HTTPS `127.0.0.1:27124`
+- 15 `obsidian_*` aracın tamamı canlı testten geçti
+- 4 `project_*` aracın tamamı canlı testten geçti
+- Init idempotency, beş unsafe path reddi, safe-create overwrite koruması,
+  checkpoint, decision/pending-approval ayrımı ve süreç yeniden başlatma sonrası
+  context recovery geçti
+- Canlı testin ilk turunda açık `session_id` dosya yoluna timestamp eklenmesi
+  nedeniyle duplicate checkpoint'in reddedilmediği bulundu; açık kimlikler için
+  `sessions/<session_id>.md` kullanılarak düzeltildi ve tekrar test edildi
+- Eski DQL tabanlı recent-changes isteğinin Local REST API 4.x'te çalışmadığı
+  bulundu; `stat.mtime` JsonLogic sorgusu ve yerel sıralama ile düzeltildi
+- Var olmayan `/periodic/:period/recent` endpoint kullanımı bulundu; desteklenen
+  tarihli periodic endpoint'leriyle sınırlı geriye tarama uygulanarak düzeltildi

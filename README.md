@@ -183,7 +183,15 @@ session file remains as the recovery record.
 
 You need the Obsidian REST API community plugin running: https://github.com/coddingtonbear/obsidian-local-rest-api
 
-Install and enable it in the settings and copy the api key.
+V1's complete 15-tool compatibility baseline is pinned to **Local REST API
+4.1.7**. It was verified live with Obsidian 1.13.4. Install and enable that
+plugin version in the settings and copy the API key.
+
+Local REST API 5.x removes the periodic-note REST endpoints used by the two
+existing periodic tools and changes other API behavior. The four
+`project_*` tools may use only basic vault operations, but 5.x is not the
+supported full-tool baseline until a separate compatibility slice is designed
+and tested. Do not blindly upgrade the plugin on the V1 installation.
 
 #### Claude Desktop
 

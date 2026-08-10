@@ -482,3 +482,85 @@ Gerçek Obsidian vault'una yazan smoke test bu bilgisayarda başlatılmadı. Bu 
 ### Devam koşulu
 
 Ana bilgisayarda Obsidian, boş test vault'u ve Local REST API eklentisi açıldıktan; repo kurulduktan ve API anahtarı yerel ortamda tanımlandıktan sonra `docs/LIVE_OBSIDIAN_SMOKE_TEST.md` uygulanacaktır.
+
+## 2026-08-10 — Test bilgisayarında gerçek Obsidian kabul testi
+
+### Ortam
+
+- Ana bilgisayarda test yapılamayacağı netleştiği için kabul testi bu geliştirme bilgisayarında ayrı bir test vault'unda çalıştırıldı.
+- Test vault'u: `W:/Workspace/Projects/Local/vault/test`
+- Vault testten önce Markdown dosyası içermiyordu.
+- Obsidian sürümü: `1.13.4`
+- Local REST API sürümü: `4.1.7`
+- Bağlantı: HTTPS `127.0.0.1:27124`
+- API anahtarı yalnız plugin'in yerel `data.json` dosyasından alt süreç belleğine alındı; repo dosyalarına veya komut çıktısına yazılmadı.
+
+### Sürüm kararı
+
+Mevcut 15 Obsidian aracının tamamını koruyan V1 referans sürümü Local REST API `4.1.7` olarak sabitlendi. Upstream 5.x periodic-note REST uçlarını kaldırdığı ve başka API davranışlarını değiştirdiği için 5.x tam uyumluluk ayrı bir gelecek dilimine bırakıldı. V1 kurulumu plugin'i körlemesine yükseltmeyecek.
+
+### İlk canlı turda bulunan hata — duplicate session
+
+`project_checkpoint` açık bir `session_id` alsa bile session dosya adına timestamp ekliyordu. Aynı kimlikle bir saniye sonra yapılan ikinci checkpoint farklı dosya yoluna yazıldığı için conflict oluşmadı ve güncel belgeler ikinci kez değiştirildi.
+
+Düzeltme:
+
+- Açık `session_id` verilirse append-only yol `sessions/<session_id>.md` oldu.
+- Otomatik kimliklerde mevcut timestamp+UUID dosya adı korundu.
+- Farklı timestamp değerleriyle aynı açık session kimliğinin reddedildiğini doğrulayan regresyon testi eklendi.
+- İlk başarısız canlı kayıtlar silinmedi; kanıt olarak test vault'unda bırakıldı.
+- Temiz tekrar `PROJECT_MEMORY_ROOT=acceptance-v2` altında yapıldı.
+
+### İkinci canlı turda bulunan hata — recent changes
+
+`obsidian_get_recent_changes`, Local REST API 4.x'te kaldırılmış Dataview DQL Content-Type'ını kullanıyordu ve gerçek API `40012` döndürüyordu.
+
+Düzeltme:
+
+- Tek bir JsonLogic `{"var": "stat.mtime"}` sorgusuyla dosya değişiklik zamanları alındı.
+- Gün sınırı filtrelemesi, azalan zaman sıralaması ve limit istemci tarafında deterministik olarak uygulandı.
+- Mock testi yeni gerçek API sözleşmesine göre değiştirildi ve canlı çağrı tekrar geçti.
+
+### Üçüncü canlı turda bulunan hata — recent periodic notes
+
+`obsidian_get_recent_periodic_notes`, upstream 4.1.7 route tablosunda bulunmayan `/periodic/:period/recent` endpoint'ini çağırıyordu; gerçek API isteği `40054` ile yanlış route'a düşüyordu.
+
+Düzeltme:
+
+- Local REST API'nin desteklediği `/periodic/<period>/<year>/<month>/<day>/` endpoint'i kullanıldı.
+- Günlük, haftalık, aylık, çeyreklik ve yıllık dönem sınırları geriye doğru üretiliyor.
+- Bulunan notlar path'e göre tekilleştiriliyor, içerik isteğe göre çıkarılıyor ve limite ulaşınca tarama duruyor.
+- Beş dönem türü için sınır üretim testleri eklendi; gerçek daily note ile canlı current/recent çağrıları geçti.
+
+### Canlı araç matrisi sonucu
+
+15 mevcut `obsidian_*` aracın tamamı gerçek vault üzerinde geçti:
+
+- Listeleme: vault ve directory
+- Okuma: tek dosya ve batch
+- Yazma: append, patch ve put
+- Arama: simple, complex ve tag
+- Metadata: frontmatter ve recent changes
+- Periodic: current ve recent
+- Delete: yalnız testin kendi oluşturduğu geçici dosya üzerinde
+
+Dört `project_*` aracın tamamı geçti:
+
+- `project_init`: ilk oluşturma ve ikinci çağrıda idempotency
+- `project_get_context`: deterministik sıra, loaded durumu ve restart recovery
+- `project_create_file_safe`: create, already-exists ve overwrite koruması
+- `project_checkpoint`: state/handoff/progress/decision yazımı, pending approval ayrımı ve duplicate session conflict
+
+Beş unsafe yol gerçek MCP çağrısında reddedildi. MCP süreci kapatılıp yeniden başlatıldıktan sonra state, handoff, decision ve progress bağlamı konuşma geçmişi olmadan vault'tan geri yüklendi.
+
+### Otomatik doğrulama
+
+- Birim/integration test sonucu: `150 passed`.
+- Toplam kapsam: `%99`.
+- Pyright: `0 errors, 0 warnings`.
+- Gerçek stdio MCP süreci: 19 araç kayıtlı.
+- `git diff --check`: temiz; yalnız Windows LF/CRLF dönüşüm uyarıları var.
+
+### Sonuç
+
+Tek bilgisayarda kalıcı proje devamlılığı hedefinin teknik kabul testi geçti. Ana bilgisayarda ayrı bir test zorunlu değil; ana bilgisayar kurulum hedefidir. Taşıma öncesinde bu değişiklikler gözden geçirilmeli, commit edilmeli ve `origin` remote'una gönderilmelidir.

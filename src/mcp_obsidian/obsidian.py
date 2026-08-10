@@ -1,7 +1,10 @@
 import re
 import requests
+import time
 import urllib.parse
 import os
+from datetime import date, timedelta
+from collections.abc import Iterator
 from typing import Any
 
 
@@ -339,25 +342,46 @@ class Obsidian():
         Returns:
             List of recent periodic notes
         """
-        url = f"{self.get_base_url()}/periodic/{period}/recent"
-        params = {
-            "limit": limit,
-            "includeContent": include_content
-        }
-        
-        def call_fn():
-            response = requests.get(
-                url, 
-                headers=self._get_headers(), 
-                params=params,
-                verify=self.verify_ssl, 
-                timeout=self.timeout
-            )
-            response.raise_for_status()
-            
-            return response.json()
+        notes = []
+        seen_paths = set()
+        max_candidates = min(max(limit * 8, 64), 400)
 
-        return self._safe_call(call_fn)
+        for candidate in _periodic_candidate_dates(period, date.today()):
+            if max_candidates <= 0 or len(notes) >= limit:
+                break
+            max_candidates -= 1
+            url = (
+                f"{self.get_base_url()}/periodic/{period}/"
+                f"{candidate.year}/{candidate.month}/{candidate.day}/"
+            )
+
+            def call_fn():
+                response = requests.get(
+                    url,
+                    headers=self._get_headers()
+                    | {"Accept": "application/vnd.olrapi.note+json"},
+                    verify=self.verify_ssl,
+                    timeout=self.timeout,
+                )
+                response.raise_for_status()
+                return response.json()
+
+            try:
+                note = self._safe_call(call_fn)
+            except ObsidianApiError as exc:
+                if exc.status_code == 404 and exc.error_code == 40461:
+                    continue
+                raise
+
+            path = note.get("path")
+            if not isinstance(path, str) or path in seen_paths:
+                continue
+            seen_paths.add(path)
+            if not include_content:
+                note = {key: value for key, value in note.items() if key != "content"}
+            notes.append(note)
+
+        return notes
     
     def get_recent_changes(self, limit: int = 10, days: int = 90) -> Any:
         """Get recently modified files in the vault.
@@ -369,39 +393,55 @@ class Obsidian():
         Returns:
             List of recently modified files with metadata
         """
-        # Build the DQL query
-        query_lines = [
-            "TABLE file.mtime",
-            f"WHERE file.mtime >= date(today) - dur({days} days)",
-            "SORT file.mtime DESC",
-            f"LIMIT {limit}"
-        ]
-        
-        # Join with proper DQL line breaks
-        dql_query = "\n".join(query_lines)
-        
-        # Make the request to search endpoint
-        url = f"{self.get_base_url()}/search/"
-        headers = self._get_headers() | {
-            'Content-Type': 'application/vnd.olrapi.dataview.dql+txt'
-        }
-        
-        def call_fn():
-            response = requests.post(
-                url,
-                headers=headers,
-                data=dql_query.encode('utf-8'),
-                verify=self.verify_ssl,
-                timeout=self.timeout
-            )
-            response.raise_for_status()
-            return response.json()
+        # Dataview DQL search was removed from Local REST API 4.x. A JsonLogic
+        # query can return each note's mtime without fetching full contents;
+        # filter and sort those numeric results locally.
+        results = self.search_json({"var": "stat.mtime"})
+        cutoff_ms = (time.time() - (days * 24 * 60 * 60)) * 1000
+        recent = []
+        for result in results:
+            filename = result.get("filename")
+            mtime = result.get("result")
+            if (
+                not isinstance(filename, str)
+                or isinstance(mtime, bool)
+                or not isinstance(mtime, (int, float))
+                or mtime < cutoff_ms
+            ):
+                continue
+            recent.append({"filename": filename, "mtime": mtime})
 
-        return self._safe_call(call_fn)
+        recent.sort(key=lambda item: item["mtime"], reverse=True)
+        return recent[:limit]
 
 
 _HEADING_RE = re.compile(r"^\s{0,3}(#{1,6})\s+(.+?)\s*$")
 _FENCE_RE = re.compile(r"^\s*(```|~~~)")
+
+
+def _periodic_candidate_dates(period: str, anchor: date) -> Iterator[date]:
+    """Yield recent dates that identify successive periodic-note buckets."""
+
+    index = 0
+    while True:
+        if period == "daily":
+            yield anchor - timedelta(days=index)
+        elif period == "weekly":
+            yield anchor - timedelta(weeks=index)
+        elif period in {"monthly", "quarterly"}:
+            month_step = index * (3 if period == "quarterly" else 1)
+            month_index = (anchor.year * 12 + anchor.month - 1) - month_step
+            if month_index < 12:
+                return
+            yield date(month_index // 12, month_index % 12 + 1, 1)
+        elif period == "yearly":
+            year = anchor.year - index
+            if year < 1:
+                return
+            yield date(year, 1, 1)
+        else:
+            raise ValueError(f"unsupported period: {period}")
+        index += 1
 
 
 def _find_heading_paths(content: str, target: str) -> list[str]:

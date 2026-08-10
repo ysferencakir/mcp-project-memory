@@ -74,6 +74,12 @@ def test_resolve_path_validates_configured_root():
         service.resolve_path("STATE.md")
 
 
+def test_resolve_document_path_rejects_unknown_document():
+    service, _ = _service()
+    with pytest.raises(ValueError, match="unknown project document"):
+        service.resolve_document_path("missing")
+
+
 def test_create_file_safe_does_not_write_when_file_exists():
     service, client = _service()
     client.get_file_contents.return_value = "existing"
@@ -284,7 +290,7 @@ def test_checkpoint_creates_append_only_session_then_updates_current_documents()
         service,
         "create_file_safe",
         return_value=CreateFileResult(
-            "created", "sessions/2026-08-10T12-30-00Z-session-1.md"
+            "created", "sessions/session-1.md"
         ),
     ) as create:
         result = service.checkpoint(_checkpoint_data(), now=now)
@@ -311,7 +317,59 @@ def test_checkpoint_creates_append_only_session_then_updates_current_documents()
     assert "Approve main computer installation" not in decisions_call.args[1]
     progress_content = client.append_content.call_args_list[1].args[1]
     assert "2026-08-10T12:30:00Z" in progress_content
-    assert "[[sessions/2026-08-10T12-30-00Z-session-1.md]]" in progress_content
+    assert "[[sessions/session-1.md]]" in progress_content
+
+
+def test_checkpoint_without_explicit_id_keeps_timestamped_session_path():
+    service, _ = _service()
+    now = datetime(2026, 8, 10, 12, 30, tzinfo=timezone.utc)
+
+    with (
+        patch("mcp_obsidian.project_memory.uuid4") as uuid4,
+        patch.object(
+            service,
+            "create_file_safe",
+            return_value=CreateFileResult(
+                "created", "sessions/2026-08-10T12-30-00Z-abcdef123456.md"
+            ),
+        ) as create,
+    ):
+        uuid4.return_value.hex = "abcdef1234567890"
+        result = service.checkpoint(
+            _checkpoint_data(session_id=None, decisions=[]), now=now
+        )
+
+    assert result.session_id == "abcdef123456"
+    assert create.call_args.args[0] == (
+        "sessions/2026-08-10T12-30-00Z-abcdef123456.md"
+    )
+
+
+def test_explicit_session_id_conflicts_even_at_a_different_timestamp():
+    service, client = _service()
+    first_time = datetime(2026, 8, 10, 12, 30, tzinfo=timezone.utc)
+    second_time = datetime(2026, 8, 10, 12, 31, tzinfo=timezone.utc)
+
+    with patch.object(
+        service,
+        "create_file_safe",
+        side_effect=[
+            CreateFileResult("created", "sessions/session-1.md"),
+            CreateFileResult("already_exists", "sessions/session-1.md"),
+        ],
+    ) as create:
+        service.checkpoint(_checkpoint_data(), now=first_time)
+        client.reset_mock()
+
+        with pytest.raises(CheckpointConflictError, match="already exists"):
+            service.checkpoint(_checkpoint_data(), now=second_time)
+
+    assert [call.args[0] for call in create.call_args_list] == [
+        "sessions/session-1.md",
+        "sessions/session-1.md",
+    ]
+    client.put_content.assert_not_called()
+    client.append_content.assert_not_called()
 
 
 def test_checkpoint_conflict_never_updates_current_documents():

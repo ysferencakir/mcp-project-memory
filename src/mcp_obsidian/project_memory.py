@@ -259,6 +259,7 @@ class ProjectMemory:
         current_time = (now or datetime.now(timezone.utc)).astimezone(timezone.utc)
         timestamp = current_time.isoformat(timespec="seconds").replace("+00:00", "Z")
         filename_timestamp = current_time.strftime("%Y-%m-%dT%H-%M-%SZ")
+        explicit_session_id = data.session_id is not None
         session_id = data.session_id or uuid4().hex[:12]
 
         if not re.fullmatch(r"[A-Za-z0-9_-]+", session_id):
@@ -266,7 +267,10 @@ class ProjectMemory:
                 "session_id may contain only letters, numbers, '_' and '-'"
             )
 
-        session_relative_path = f"sessions/{filename_timestamp}-{session_id}.md"
+        if explicit_session_id:
+            session_relative_path = f"sessions/{session_id}.md"
+        else:
+            session_relative_path = f"sessions/{filename_timestamp}-{session_id}.md"
         session_content = self._build_session_content(data, timestamp, session_id)
         session_result = self.create_file_safe(session_relative_path, session_content)
         if session_result.status != "created":

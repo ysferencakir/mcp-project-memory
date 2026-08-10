@@ -10,7 +10,7 @@ ortak proje hafızası olarak kullanacağı ilk üretim-benzeri kurulumu tarif e
 - Python 3.11 veya üzeri
 - `uv`
 - Obsidian
-- Obsidian Local REST API community eklentisi
+- Obsidian Local REST API community eklentisi `4.1.7`
 - Kullanılacak istemci: Codex, Claude Code veya ikisi
 
 Her proje için ayrı vault açılması V1 çalışma modelidir. Aynı anda yalnızca
@@ -45,7 +45,12 @@ normaldir; asıl bağlantı doğrulaması istemci içinden yapılır.
 ## 3. Boş test vault'unu hazırla
 
 1. Obsidian'da yalnız bu deneme için yeni ve boş bir vault oluştur.
-2. Local REST API eklentisini kur ve etkinleştir.
+2. [Local REST API 4.1.7 release](https://github.com/coddingtonbear/obsidian-local-rest-api/releases/tag/4.1.7)
+   sayfasındaki `main.js`, `manifest.json` ve `styles.css` dosyalarını
+   `<vault>/.obsidian/plugins/obsidian-local-rest-api/` dizinine koy; Obsidian'ı
+   yeniden yükle ve eklentiyi etkinleştir. Mevcut 15 Obsidian aracının tamamı
+   için V1 uyumluluk sürümü `4.1.7`'dir; community directory güncel bir 5.x
+   sürümü kuruyorsa onu V1 kurulumu için kullanma.
 3. HTTPS portunu doğrula; varsayılan değer `27124`.
 4. API anahtarını kopyala fakat repodaki hiçbir izlenen dosyaya yazma.
 

@@ -5,8 +5,11 @@ build/
 dist/
 wheels/
 *.egg-info
+.coverage
+htmlcov/
 
 # Virtual environments
 .venv
 .env
 .project-memory.env.ps1
+test-vault/
