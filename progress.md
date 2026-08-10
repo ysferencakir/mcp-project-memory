@@ -610,3 +610,31 @@ Konuşma geçmişine erişimi olmayan yeni bir Codex veya Claude Code oturumunun
 ### Devam koşulu
 
 Yeni Codex taskı açılmadan önce `OBSIDIAN_API_KEY` yeni Codex sürecinin ortamında bulunmalı veya server repo kökünde yalnız yerelde tutulan `.env` dosyasına eklenmelidir. Ardından yeni task çalışma dizini `examples/agent-handoff-demo` seçilmeli ve ilk işlem `project_get_context` olmalıdır.
+
+## 2026-08-10 — Phase 3 handoff kabulü ve Windows UTF-8 düzeltmesi
+
+### Handoff kabul sonucu
+
+- Yeni bir Codex taskı önceki konuşmayı kullanmadan `PROJECT_MEMORY_ROOT=agent-handoff-demo` ile yedi proje belgesinin tamamını yükledi.
+- İzole geçici JSON deposunda `add`, `list`, `complete` ve tamamlanma sonrası `list` akışı doğrulandı.
+- `phase-3-handoff-acceptance-codex` checkpoint'i Obsidian'a yazıldı ve yeniden okunabildi.
+- Bu tur Codex → yeni Codex taskı devamlılığını kanıtladı; Codex ↔ Claude Code kabulü hâlâ ayrı bir gelecek doğrulamasıdır.
+
+### Bulunan gerçek terminal hatası
+
+Windows'ta Python stdout kodlaması `cp1252` olduğunda Türkçe görev başlığı JSON dosyasına doğru yazılıyor ancak CLI çıktısı sırasında `UnicodeEncodeError` oluşuyordu. `StringIO` kullanan birim testleri gerçek byte kodlaması yapmadığı için bu davranışı yakalamıyordu.
+
+### Düzeltme
+
+- CLI başlangıcında `reconfigure` destekleyen gerçek stdout ve stderr akışları UTF-8 olarak ayarlandı.
+- Test doubles üzerinde davranış değiştirilmedi.
+- Başlangıç kodlamasını bilinçli olarak `cp1252` yapan gerçek subprocess regresyon testi eklendi.
+- Regresyon testi Türkçe başlıkla tam `add → list → complete → list` akışını ve UTF-8 çıktıyı doğruluyor.
+
+### Doğrulama
+
+- Demo unittest: `9 passed`.
+- Ana sunucu pytest paketi: `150 passed`.
+- Pyright: `0 errors, 0 warnings`.
+- Ortam değişkeniyle UTF-8 zorlamadan gerçek Windows terminal akışı başarılı.
+- `git diff --check` başarılı; yalnız çalışma ağacının LF/CRLF bilgilendirme uyarıları mevcut.
