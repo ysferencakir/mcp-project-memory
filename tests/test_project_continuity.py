@@ -32,6 +32,8 @@ def test_agent_can_recover_context_after_init_and_checkpoint():
         "Persistent context shared by coding agents.",
     )
     assert len(initialized.created) == 7
+    assert "[[STATE.md|STATE]]" in storage.files["PROJECT.md"]
+    assert "[[PROGRESS.md|PROGRESS]]" in storage.files["PROJECT.md"]
 
     checkpoint = service.checkpoint(
         CheckpointData(

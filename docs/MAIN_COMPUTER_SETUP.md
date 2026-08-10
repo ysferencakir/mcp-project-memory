@@ -4,6 +4,10 @@ Bu rehber tek bir bilgisayarda Claude Code ve Codex'in aynı Obsidian vault'unu
 ortak proje hafızası olarak kullanacağı ilk üretim-benzeri kurulumu tarif eder.
 İlk doğrulama gerçek proje vault'u yerine boş bir test vault'unda yapılmalıdır.
 
+Python/venv yerine Docker ile kurulum yapmak için
+[Docker kurulumu](DOCKER_SETUP.md) belgesini kullanabilirsiniz. Docker yalnız
+MCP sunucusunu container'a alır; Obsidian ve vault ana bilgisayarda kalır.
+
 ## 1. Ön koşullar
 
 - Git

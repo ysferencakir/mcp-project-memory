@@ -52,6 +52,8 @@ Beklenen ilk sonuç:
 - `created` içinde yedi Markdown dosyası bulunur.
 - `already_exists` boştur.
 - Obsidian içinde `PROJECT.md`, `STATE.md`, `ROADMAP.md`, `DECISIONS.md`, `TODO.md`, `HANDOFF.md` ve `PROGRESS.md` görünür.
+- `PROJECT.md`, yapılandırılmış vault yollarını kullanarak diğer altı temel
+  proje-hafızası belgesine bağlanır.
 
 Aynı çağrıyı ikinci kez çalıştırın.
 

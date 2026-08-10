@@ -19,8 +19,14 @@ During work:
 - Put critical, destructive, security-sensitive, or goal-changing proposals in
   `pending_approvals`; do not record them as approved decisions.
 
-After meaningful work, call `project_checkpoint` with an honest summary,
-completed work, files changed, verification, decisions, pending approvals,
-blockers, and the next smallest concrete step. Do not claim persistence until
-the checkpoint succeeds.
+After meaningful work:
 
+1. Reconcile the Obsidian `ROADMAP` and `TODO` documents with verified results.
+2. Mark only unambiguously completed checklist items; leave partial or unclear
+   items open instead of inferring completion from similar wording.
+3. Read the changed planning documents back to verify them.
+4. Call `project_checkpoint` with an honest summary, completed work, files
+   changed, verification, decisions, pending approvals, blockers, and the next
+   smallest concrete step.
+
+Do not claim persistence until the checkpoint succeeds.

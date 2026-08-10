@@ -34,8 +34,16 @@ bir çalışma yapmıyorsa checkpoint oluşturmak zorunda değildir.
 
 ## Anlamlı oturum sonu
 
-İş tamamlandığında veya başka agente devredildiğinde `project_checkpoint`
-çağır. En az şu alanlar dürüst ve doğrulanabilir olmalıdır:
+İş tamamlandığında veya başka agente devredildiğinde checkpoint'ten önce:
+
+1. `ROADMAP` ve `TODO` belgelerini doğrulanmış çalışma sonucuyla karşılaştır.
+2. Açıkça tamamlandığı kanıtlanan mevcut checklist maddelerini güncelle.
+3. Belirsiz veya kısmen tamamlanmış maddeleri açık bırak; doğal dil
+   benzerliğinden tamamlanma sonucu çıkarma.
+4. Plan belgelerini yeniden okuyarak değişikliği doğrula.
+
+Ardından `project_checkpoint` çağır. En az şu alanlar dürüst ve doğrulanabilir
+olmalıdır:
 
 - `agent_id`
 - `summary`
@@ -70,7 +78,9 @@ eklenebilir:
 > Bu proje kalıcı bağlam için `project-memory` MCP sunucusunu kullanır. Anlamlı
 > çalışmaya başlamadan önce `project_get_context` çağır ve sonuçtaki eksik,
 > kırpılmış veya dışarıda bırakılmış belgeleri dikkate al. İlk boş vault'ta
-> `project_init` kullan. Anlamlı iş veya handoff sonunda
+> `project_init` kullan. Anlamlı iş veya handoff sonunda önce doğrulanmış
+> sonuçlarla `ROADMAP` ve `TODO` checklist'lerini uzlaştır; belirsiz işleri
+> açık bırak. Ardından
 > `project_checkpoint` ile yapılanları, doğrulamaları, dosyaları, engelleri ve
 > sıradaki adımı kaydet. Kritik kararları `decisions` içine kesinleşmiş olarak
 > yazma; `pending_approvals` ile insan onayına bırak. Aynı vault'a başka bir

@@ -1,0 +1,27 @@
+{
+  "mcpServers": {
+    "project-memory": {
+      "type": "stdio",
+      "command": "docker",
+      "args": [
+        "run",
+        "--rm",
+        "-i",
+        "-e",
+        "OBSIDIAN_API_KEY",
+        "-e",
+        "OBSIDIAN_HOST=host.docker.internal",
+        "-e",
+        "OBSIDIAN_PORT=27124",
+        "-e",
+        "OBSIDIAN_PROTOCOL=https",
+        "-e",
+        "PROJECT_MEMORY_ROOT=",
+        "mcp-project-memory:local"
+      ],
+      "env": {
+        "OBSIDIAN_API_KEY": "${OBSIDIAN_API_KEY}"
+      }
+    }
+  }
+}

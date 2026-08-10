@@ -157,6 +157,40 @@ def test_init_project_creates_templates_without_overwriting_existing_files():
     assert project_call.args[0] == "PROJECT.md"
     assert "Memory Project" in project_call.args[1]
     assert "Persistent context" in project_call.args[1]
+    assert "[[STATE.md|STATE]]" in project_call.args[1]
+    assert "[[ROADMAP.md|ROADMAP]]" in project_call.args[1]
+    assert "[[TODO.md|TODO]]" in project_call.args[1]
+
+
+def test_init_project_index_uses_configured_root_and_document_paths():
+    client = MagicMock()
+    service = ProjectMemory(
+        client,
+        ProjectMemoryConfig(
+            root="workspace",
+            documents={
+                "project": "OVERVIEW.md",
+                "state": "status/CURRENT.md",
+                "roadmap": "plans/NEXT.md",
+            },
+        ),
+    )
+
+    def create(relative_path, _content):
+        return CreateFileResult("created", service.resolve_path(relative_path))
+
+    with patch.object(service, "create_file_safe", side_effect=create) as create_file:
+        result = service.init_project("Configured Project")
+
+    project_content = create_file.call_args_list[0].args[1]
+    assert "[[workspace/status/CURRENT.md|STATE]]" in project_content
+    assert "[[workspace/plans/NEXT.md|ROADMAP]]" in project_content
+    assert "TODO" not in project_content
+    assert result.created == [
+        "workspace/OVERVIEW.md",
+        "workspace/status/CURRENT.md",
+        "workspace/plans/NEXT.md",
+    ]
 
 
 def test_init_project_reports_templates_missing_from_custom_mapping():

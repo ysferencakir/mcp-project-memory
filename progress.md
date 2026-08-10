@@ -638,3 +638,188 @@ Windows'ta Python stdout kodlaması `cp1252` olduğunda Türkçe görev başlı�
 - Pyright: `0 errors, 0 warnings`.
 - Ortam değişkeniyle UTF-8 zorlamadan gerçek Windows terminal akışı başarılı.
 - `git diff --check` başarılı; yalnız çalışma ağacının LF/CRLF bilgilendirme uyarıları mevcut.
+
+## 2026-08-10 — Plan uzlaştırma protokolü ve Obsidian proje indeksi
+
+### Bulunan boşluk
+
+Checkpoint kayıtları `STATE`, `HANDOFF`, `PROGRESS` ve gerektiğinde
+`DECISIONS` belgelerini doğru güncelliyordu; ancak serbest metinli `completed`
+alanından checklist sonucu çıkarmadığı için `ROADMAP` ve `TODO` eski durumda
+kalabiliyordu. Ayrıca temel belgelerde wiki linki olmadığı için dolu dosyalar
+Obsidian grafiğinde bağlantısız node olarak görünüyordu.
+
+### Uygulananlar
+
+- Yeni proje şablonlarında `PROJECT.md` diğer altı temel hafıza belgesine
+  bağlanan bir proje indeksi içeriyor.
+- İndeks bağlantıları sabit dosya adı varsaymıyor; `PROJECT_MEMORY_ROOT` ve
+  yapılandırılmış belge yolları üzerinden üretiliyor.
+- Mevcut dosyaları koruyan `project_init` davranışı değiştirilmedi.
+- Agent protokolü, checkpoint öncesinde `ROADMAP` ve `TODO` belgelerini yalnız
+  doğrulanmış sonuçlarla uzlaştırmayı ve değişiklikleri geri okumayı zorunlu
+  kılıyor.
+- `project_checkpoint` doğal dil benzerliğinden otomatik görev tamamlama sonucu
+  çıkarmıyor; belirsiz checklist maddeleri açık bırakılıyor.
+- Agent Handoff Demo içindeki `PROJECT`, `ROADMAP` ve `TODO` belgeleri gerçek
+  Phase 0–3 durumuyla senkronize edildi; cross-agent ve ana bilgisayar işleri
+  açık fazlara ayrıldı.
+
+### Doğrulama
+
+- Ana sunucu pytest paketi: `151 passed`.
+- Demo unittest paketi: `9 passed`.
+- Pyright: `0 errors, 0 warnings`.
+- `git diff --check` başarılı; yalnız LF/CRLF dönüşüm uyarıları mevcut.
+- Obsidian readback: `PROJECT` 6 wiki linki, `ROADMAP` 17 tamamlanmış ve 10 açık
+  madde, `TODO` 8 tamamlanmış ve 6 açık madde içeriyor.
+
+## 2026-08-10 — Docker taşınabilirlik katmanı
+
+### Tasarım
+
+- Obsidian ve vault ana bilgisayarda kalıyor; yalnız stdio MCP sunucusu Linux
+  container olarak çalışıyor.
+- Local REST API mevcut test ortamında yalnız `127.0.0.1:27124` adresine bind
+  olduğu için referans çalışma biçimi `--network host` kullanıyor.
+- Docker Desktop için host networking desteği 4.34+ sürümünde ayarlardan
+  etkinleştirilmelidir; Linux Docker Engine bunu doğrudan destekler.
+- API anahtarı image'a, Dockerfile'a veya paylaşılan istemci örneklerine
+  yazılmıyor; agent sürecinden `docker run` işlemine aktarılıyor.
+
+### Uygulananlar
+
+- Python `3.11.15-slim-bookworm` ve uv `0.11.32` image sürümlerini sabitleyen
+  çok aşamalı `Dockerfile` eklendi.
+- Bağımlılıklar `uv.lock` üzerinden `uv sync --locked --no-dev --no-editable`
+  ile kuruluyor.
+- Runtime image root olmayan `mcp` kullanıcısıyla ve doğrudan
+  `mcp-obsidian` entrypoint'iyle çalışıyor.
+- `.dockerignore`, `.env`, `.venv`, Git verisi ve test vault'u gibi yerel veya
+  hassas girdileri build context dışında bırakıyor.
+- Codex ve Claude Code için secret içermeyen Docker stdio yapılandırma
+  örnekleri eklendi.
+- Windows/macOS Docker Desktop ve Linux için host-network sınırlarını,
+  build/run adımlarını ve kabul matrisini açıklayan Docker rehberi eklendi.
+- Dockerfile, ignore listesi ve iki istemci örneği için dört statik regresyon
+  testi eklendi.
+
+### Doğrulama
+
+- Ana pytest paketi: `155 passed`.
+- Demo unittest paketi: `9 passed`.
+- Pyright: `0 errors, 0 warnings`.
+- `git diff --check` başarılı; yalnız LF/CRLF dönüşüm uyarıları mevcut.
+- Bu bilgisayarda Docker CLI henüz kurulmadığı için gerçek image build, host
+  REST bağlantısı ve container stdio araç kaydı başarılı sayılmadı.
+
+### Sıradaki adım
+
+Docker Desktop kurulumu tamamlandıktan sonra host networking'i etkinleştirmek,
+image'ı build etmek, container içinden 19 MCP aracını listelemek ve
+`agent-handoff-demo` context recovery testini çalıştırmak.
+
+## 2026-08-10 — Canlı Docker kabulü
+
+### Ağ düzeltmesi
+
+İlk tasarım Local REST API'nin loopback bind davranışı nedeniyle bütün
+platformlarda `--network host` kullanmayı öngörüyordu. Gerçek Docker Desktop
+testinde bu özellik etkin değilken container içindeki `127.0.0.1:27124`
+bağlantısı reddedildi. Docker Desktop'ın `host.docker.internal` adresi aynı
+loopback Obsidian servisine başarıyla ulaştı.
+
+Referans ağ modeli gerçek sonuca göre düzeltildi:
+
+- Windows/macOS Docker Desktop: varsayılan bridge ağı ve
+  `OBSIDIAN_HOST=host.docker.internal`.
+- Linux Docker Engine: `--network host` ve `OBSIDIAN_HOST=127.0.0.1`.
+
+Bu ayrım Docker Desktop'ta ek özellik açma zorunluluğunu kaldırıyor ve Linux
+loopback erişimini koruyor.
+
+### Canlı sonuç
+
+- Docker Desktop: `4.86.0`.
+- Linux Docker Engine: `29.7.2`, `linux/amd64`.
+- Image: `mcp-project-memory:local`.
+- Son digest-pinned image boyutu: `53,978,909` byte.
+- Son image kimliği:
+  `sha256:d2df22f107cb36348f9941d57d346e3cb4c23cd9d4a6aa22d601c79ce97aa870`.
+- Runtime kullanıcı: `mcp`.
+- Entrypoint: `mcp-obsidian`.
+- Gerçek stdio `initialize`: başarılı.
+- `tools/list`: 19 araç; dört `project_*` aracı dahil.
+- `project_get_context`: yedi belgenin tamamı `loaded`.
+- İki ayrı container başlangıcında STATE SHA-256 değeri aynı kaldı; read-only
+  restart recovery geçti.
+- Canlı build sırasında çözümlenen Python ve uv manifest digest'leri
+  Dockerfile'a sabitlenerek base-image tekrar üretilebilirliği güçlendirildi.
+
+### Kalan Docker kabul adımı
+
+Container içinden gerçek `project_checkpoint` yazımı yapılacak ve yeni bir
+container başlangıcında bu checkpoint geri okunacak. Ardından son test paketi,
+diff incelemesi ve commit/push yapılacak.
+
+### Yazma ve yeniden başlatma kabul sonucu
+
+- `project_checkpoint` gerçek container stdio çağrısıyla çalıştırıldı.
+- Session: `docker-live-acceptance-codex`.
+- Vault yolu:
+  `agent-handoff-demo/sessions/docker-live-acceptance-codex.md`.
+- İlk container kapandıktan sonra yeni bir container başlatıldı.
+- Yeni container `STATE`, `HANDOFF`, `ROADMAP` ve `TODO` belgelerini `loaded`
+  olarak okudu.
+- STATE içinde `docker-live-acceptance-codex` session bağlantısı doğrulandı.
+- Böylece container üzerinden okuma, yazma ve yeniden başlatma sonrası kalıcı
+  context recovery kabulü tamamlandı.
+
+## 2026-08-10 — Codex makine güvenliği ve yeniden üretilebilirlik denetimi
+
+Claude Code aboneliği kullanılamadığı için cross-agent kabulü tamamlanmış
+sayılmadı; bu bölüm açık ve abonelik yeniden erişilebilir olduğunda
+çalıştırılmak üzere ertelendi. Codex tarafındaki bağımsız doğrulamalar
+tamamlandı.
+
+### Güvenlik ve çalışma zamanı
+
+- `.env` Git tarafından ignore ediliyor ve taranan 51 proje dosyasında gerçek
+  API anahtarının birebir kopyası bulunmadı.
+- Image yapılandırmasında ve build geçmişinde `OBSIDIAN_API_KEY` bulunmuyor.
+- Runtime `uid=999(mcp)` ile root olmayan kullanıcı olarak çalışıyor.
+- Runtime image içinde `.env`, `.git`, `tests` ve `test-vault` bulunmuyor.
+- Image port veya volume ilan etmiyor.
+- API anahtarı verilmeden başlatma güvenli biçimde hata veriyor.
+- Testlerden sonra çalışan veya durmuş container, local volume ve dangling
+  image kalmadı.
+
+### Yeniden üretilebilirlik ve canlı MCP
+
+- Image `--no-cache` ile yeniden başarıyla oluşturuldu.
+- Yeni image kimliği:
+  `sha256:3c91440e42cdca0f8763b485ecf064ad632582c11c82735d05bd322777d86511`.
+- Image boyutu: `53,978,817` byte.
+- Agent yapılandırmasındaki gibi `OBSIDIAN_API_KEY` ortam değişkeni aktarımı,
+  `host.docker.internal` ve `PROJECT_MEMORY_ROOT=agent-handoff-demo` birlikte
+  doğrulandı.
+- Yeniden kurulan image ile stdio initialize, 19 araç kaydı ve seçilen üç
+  proje belgesinin 3/3 yüklenmesi geçti.
+- Ana pytest paketi: `155 passed`.
+- Demo unittest paketi: `9 passed`.
+- Pyright, proje sanal ortamı açıkça seçilerek: `0 errors, 0 warnings`.
+- `git diff --check` başarılı; yalnız Windows LF/CRLF dönüşüm uyarıları var.
+
+### Makine notu
+
+Docker Desktop kurulumu mevcut Codex sürecinin `PATH` değişkenine sonradan
+yansımadı; Docker CLI mutlak kurulum yoluyla doğrulandı. Proje `.venv` ortamı
+sağlıklı. Docker'ın build cache kullanması normaldir ve çalışan servis veya
+kalıcı proje verisi değildir.
+
+### Kalan işler
+
+- Tam working-tree diff incelemesi.
+- Mevcut memory ve Docker değişikliklerini commit/push etme.
+- Temiz clone üzerinde kurulum ve test tekrarı.
+- Claude Code erişimi geri geldiğinde iki yönlü cross-agent kabulü.

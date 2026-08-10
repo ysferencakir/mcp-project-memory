@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from .config import DEFAULT_CONTEXT_ORDER, ProjectMemoryConfig
 from .obsidian import Obsidian, ObsidianApiError
-from .project_templates import build_default_templates
+from .project_templates import PROJECT_INDEX_DOCUMENTS, build_default_templates
 
 
 class ProjectPathError(ValueError):
@@ -151,7 +151,16 @@ class ProjectMemory:
         if not isinstance(description, str):
             raise ValueError("description must be a string")
 
-        templates = build_default_templates(project_name.strip(), description)
+        document_paths = {
+            name: self.resolve_document_path(name)
+            for name in PROJECT_INDEX_DOCUMENTS
+            if name in self.config.documents
+        }
+        templates = build_default_templates(
+            project_name.strip(),
+            description,
+            document_paths=document_paths,
+        )
         created: list[str] = []
         already_exists: list[str] = []
         skipped: list[str] = []

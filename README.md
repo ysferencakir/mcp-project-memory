@@ -113,6 +113,9 @@ Note:
 Default logical document names include `PROJECT.md`, `STATE.md`, `ROADMAP.md`,
 `DECISIONS.md`, `TODO.md`, `HANDOFF.md`, and `PROGRESS.md`. They are defined at
 the configuration boundary rather than in project-memory business logic.
+Newly initialized `PROJECT.md` files contain an Obsidian project-memory index
+whose links use the configured vault-relative paths, including
+`PROJECT_MEMORY_ROOT` and document-name overrides.
 
 You can override or add names with a JSON object:
 
@@ -174,6 +177,21 @@ development visible from Obsidian. Items in `pending_approvals` are kept in the
 session and handoff but are not promoted into durable decisions. Checkpoint is
 intentionally not a multi-file atomic transaction; if a later write fails, the
 session file remains as the recovery record.
+
+Before checkpointing, reconcile `ROADMAP` and `TODO` with verified results and
+read the changed planning documents back. Mark only unambiguous completed
+items. `project_checkpoint` intentionally does not infer checklist completion
+from free-form summary text or mutate planning documents automatically.
+
+### Docker
+
+The MCP server can run as a Linux container while Obsidian remains on the host.
+The image uses pinned Python and uv image versions, installs from `uv.lock`,
+runs as a non-root user, and receives the API key only at runtime. Because the
+Obsidian Local REST API listens on host loopback, Docker Desktop uses
+`host.docker.internal`; Linux Docker Engine uses host networking. See
+[Docker setup](docs/DOCKER_SETUP.md) for build commands, networking details,
+security boundaries, and Codex/Claude examples.
 
 ## Quickstart
 

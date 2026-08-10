@@ -1,4 +1,32 @@
-def build_default_templates(project_name: str, description: str = "") -> dict[str, str]:
+from collections.abc import Mapping
+
+
+PROJECT_INDEX_DOCUMENTS: tuple[str, ...] = (
+    "state",
+    "roadmap",
+    "todo",
+    "decisions",
+    "handoff",
+    "progress",
+)
+
+
+def _build_project_index(document_paths: Mapping[str, str]) -> str:
+    links = [
+        f"- [[{document_paths[name]}|{name.upper()}]]"
+        for name in PROJECT_INDEX_DOCUMENTS
+        if name in document_paths
+    ]
+    if not links:
+        return ""
+    return "\n## Project memory\n\n" + "\n".join(links) + "\n"
+
+
+def build_default_templates(
+    project_name: str,
+    description: str = "",
+    document_paths: Mapping[str, str] | None = None,
+) -> dict[str, str]:
     """Build the default project-memory documents.
 
     Filenames are deliberately absent here. Logical names are resolved through
@@ -6,6 +34,7 @@ def build_default_templates(project_name: str, description: str = "") -> dict[st
     """
 
     purpose = description.strip() or "Describe the project's purpose here."
+    project_index = _build_project_index(document_paths or {})
     return {
         "project": (
             f"# {project_name}\n\n"
@@ -15,6 +44,7 @@ def build_default_templates(project_name: str, description: str = "") -> dict[st
             "- Define the current project scope.\n\n"
             "## Constraints\n\n"
             "- Record durable constraints here.\n"
+            f"{project_index}"
         ),
         "state": (
             "# State\n\n"
