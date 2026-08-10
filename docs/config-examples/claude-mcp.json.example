@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "project-memory": {
+      "type": "stdio",
+      "command": "${MCP_PROJECT_MEMORY_REPO}\\.venv\\Scripts\\mcp-obsidian.exe",
+      "args": [],
+      "env": {
+        "OBSIDIAN_API_KEY": "${OBSIDIAN_API_KEY}",
+        "OBSIDIAN_HOST": "127.0.0.1",
+        "OBSIDIAN_PORT": "27124",
+        "OBSIDIAN_PROTOCOL": "https",
+        "PROJECT_MEMORY_ROOT": ""
+      }
+    }
+  }
+}

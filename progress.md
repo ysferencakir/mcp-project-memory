@@ -426,3 +426,59 @@ Gelecekte her anlamlı geliştirme diliminde bu dosyaya şu bilgiler eklenmelidi
 - Sıradaki adım
 
 Bu dosya geliştirme günlüğüdür; runtime proje hafızasının yerini tutmaz. Runtime hafıza Obsidian vault içindeki yapılandırılmış proje belgelerinde yaşayacaktır.
+
+## 2026-08-10 — Ana bilgisayar ve ortak agent kurulumu hazırlığı
+
+### Uygulananlar
+
+- `docs/MAIN_COMPUTER_SETUP.md` ile Windows ana bilgisayar için kilitli bağımlılık kurulumu, boş test vault'u, istemci doğrulaması ve canlı kabul sırası belgelendi.
+- Codex için proje veya kullanıcı kapsamına eklenebilecek `config.toml` örneği oluşturuldu.
+- Claude Code için proje kapsamındaki `.mcp.json` örneği oluşturuldu.
+- Her iki istemci de kilitli kurulumun oluşturduğu aynı `.venv/Scripts/mcp-obsidian.exe` sunucusunu ve aynı Obsidian Local REST API hedefini kullanacak şekilde yapılandırıldı.
+- API anahtarı örnek yapılandırmalara gömülmedi; istemci ortamından aktarılacak şekilde tasarlandı.
+- Yerel PowerShell değişkenlerini hazırlamak için `project-memory.env.ps1.example` eklendi; gerçek `.project-memory.env.ps1` dosyası Git ignore listesine alındı.
+- `docs/AGENT_MEMORY_PROTOCOL.md` ile oturum başlangıcı, çalışma sırası, kritik kararlar, checkpoint ve handoff kalite ölçütleri tanımlandı.
+- README'deki API anahtarı açıklaması yeni güvenli ana bilgisayar akışına yönlendirildi.
+
+### Mimari etkisi
+
+MCP bağlantısı ile agent davranışı birbirinden ayrıldı. Bağlantı şablonları iki istemcinin aynı araçlara ulaşmasını sağlar; devamlılık protokolü ise agent'ların oturum başında bağlamı okumasını ve anlamlı iş sonunda kalıcı checkpoint bırakmasını sağlar. Böylece V1 devamlılığı sinir ağı oturum hafızasına değil, normal Markdown dosyalarına ve açık bir çalışma disiplinine dayanır.
+
+### Güvenlik ve işletim sınırları
+
+- Gerçek API anahtarı repoya yazılmamalıdır.
+- PowerShell oturum dosyası yalnız yerelde tutulmalıdır.
+- Codex masaüstü uygulamasının ortam değişkenlerini görebilmesi için değişkenler uygulama başlamadan önce erişilebilir olmalıdır.
+- V1'de Claude Code ve Codex aynı vault'a eşzamanlı yazmamalıdır; checkpoint tamamlandıktan sonra agent devri yapılmalıdır.
+
+### Doğrulama durumu
+
+- Yapılandırma şablonları resmi Codex MCP ve Claude Code MCP yapılandırma biçimleriyle karşılaştırıldı.
+- JSON ve TOML şablonları parser ile doğrulandı; yeni dokümanlardaki yerel bağlantıların hedefleri kontrol edildi.
+- Kurulu `.venv/Scripts/mcp-obsidian.exe` sürecine gerçek stdio `initialize` ve `tools/list` mesajları gönderildi; 15 `obsidian_*` ve 4 `project_*` olmak üzere 19 araç görüldü.
+- Tüm test paketi yeniden çalıştırıldı: `140 passed`.
+- Gerçek ana bilgisayar yolları ve Obsidian API anahtarı bu geliştirme bilgisayarında mevcut olmadığı için canlı istemci bağlantısı henüz çalıştırılmadı.
+- Python kaynaklarında değişiklik yapılmadı; son başarılı statik analiz sonucu Pyright `0 errors, 0 warnings`, son kapsam sonucu `%99` olarak korunuyor.
+
+### Sıradaki adım
+
+Ana bilgisayarda kurulum rehberini uygulamak, boş test vault'unda canlı smoke testi tamamlamak ve bir istemcinin yazdığı checkpoint'in diğer istemci tarafından `project_get_context` ile okunabildiğini doğrulamak.
+
+## 2026-08-10 — Canlı test ön kontrolü
+
+### Kontrol sonucu
+
+- Bu geliştirme bilgisayarında `.venv/Scripts/mcp-obsidian.exe` mevcut ve çalıştırılabilir durumda.
+- Codex komutu mevcut.
+- `OBSIDIAN_API_KEY` tanımlı değil.
+- Yerel `.env` veya `.project-memory.env.ps1` bulunmuyor.
+- Obsidian Local REST API'nin varsayılan `27124` portunda dinleyen bir servis yok.
+- Claude Code ve `uv` bu kabuk ortamının `PATH` listesinde bulunmuyor.
+
+### Sonuç
+
+Gerçek Obsidian vault'una yazan smoke test bu bilgisayarda başlatılmadı. Bu beklenen bir ortam sınırıdır; kullanıcı bu bilgisayarın geliştirme/test, diğer bilgisayarın Obsidian ana bilgisayarı olduğunu daha önce belirtmiştir. Sahte bir canlı başarı kaydı üretilmedi.
+
+### Devam koşulu
+
+Ana bilgisayarda Obsidian, boş test vault'u ve Local REST API eklentisi açıldıktan; repo kurulduktan ve API anahtarı yerel ortamda tanımlandıktan sonra `docs/LIVE_OBSIDIAN_SMOKE_TEST.md` uygulanacaktır.

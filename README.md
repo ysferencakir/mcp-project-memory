@@ -60,9 +60,15 @@ The use prompts like this:
 
 ### Obsidian REST API Key
 
-There are two ways to configure the environment with the Obsidian REST API Key. 
+Never commit the Obsidian API key. For the reproducible Windows setup where
+Codex and Claude Code share the same vault, follow the
+[Main Computer Setup](docs/MAIN_COMPUTER_SETUP.md). It uses client environment
+forwarding and includes configuration templates for both clients.
 
-1. Add to server config (preferred)
+There are two basic ways to provide the environment to the server:
+
+1. Forward environment variables from a local MCP client configuration. Keep
+   the configuration user-local if it contains the key:
 
 ```json
 {
@@ -82,7 +88,8 @@ There are two ways to configure the environment with the Obsidian REST API Key.
 ```
 Sometimes Claude has issues detecting the location of uv / uvx. You can use `which uvx` to find and paste the full path in above config in such cases.
 
-2. Create a `.env` file in the working directory with the following required variables:
+2. Create a Git-ignored `.env` file in the server working directory with the
+   following variables:
 
 ```
 OBSIDIAN_API_KEY=your_api_key_here
@@ -251,6 +258,10 @@ uv run --frozen pytest
 Before using a real project vault, follow the dedicated
 [Live Obsidian Smoke Test](docs/LIVE_OBSIDIAN_SMOKE_TEST.md) against a new empty
 vault.
+
+For a shared Claude Code/Codex installation, use the
+[Main Computer Setup](docs/MAIN_COMPUTER_SETUP.md) and adopt the
+[Agent Memory Protocol](docs/AGENT_MEMORY_PROTOCOL.md).
 
 ### Debugging
 
