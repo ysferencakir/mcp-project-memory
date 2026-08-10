@@ -1,6 +1,11 @@
-# MCP server for Obsidian
+# mcp-project-memory
 
-MCP server to interact with Obsidian via the Local REST API community plugin.
+An MCP server for persistent project context and agent handoff, built on top of
+the existing Obsidian Local REST API integration.
+
+The project is evolving from `mcp-obsidian`. The existing Obsidian tools and
+the `mcp-obsidian` command remain available while project-level `project_*`
+tools are added alongside them.
 
 <a href="https://glama.ai/mcp/servers/3wko1bhuek"><img width="380" height="200" src="https://glama.ai/mcp/servers/3wko1bhuek/badge" alt="server for Obsidian MCP server" /></a>
 
@@ -8,15 +13,39 @@ MCP server to interact with Obsidian via the Local REST API community plugin.
 
 ### Tools
 
-The server implements multiple tools to interact with Obsidian:
+The server currently exposes the following existing Obsidian tools:
 
-- list_files_in_vault: Lists all files and directories in the root directory of your Obsidian vault
-- list_files_in_dir: Lists all files and directories in a specific Obsidian directory
-- get_file_contents: Return the content of a single file in your vault.
-- search: Search for documents matching a specified text query across all files in the vault
-- patch_content: Insert content into an existing note relative to a heading, block reference, or frontmatter field.
-- append_content: Append content to a new or existing file in the vault.
-- delete_file: Delete a file or directory from your vault.
+- `obsidian_list_files_in_vault`
+- `obsidian_list_files_in_dir`
+- `obsidian_get_file_contents`
+- `obsidian_batch_get_file_contents`
+- `obsidian_simple_search`
+- `obsidian_complex_search`
+- `obsidian_search_by_tag`
+- `obsidian_get_frontmatter`
+- `obsidian_patch_content`
+- `obsidian_append_content`
+- `obsidian_put_content`
+- `obsidian_delete_file`
+- `obsidian_get_periodic_note`
+- `obsidian_get_recent_periodic_notes`
+- `obsidian_get_recent_changes`
+
+Project-memory tools:
+
+- `project_create_file_safe`: Creates a Markdown file inside the configured
+  project root without overwriting a file that already exists in normal
+  sequential use.
+- `project_init`: Creates the configured project-memory documents from small
+  default templates while preserving files that already exist.
+- `project_get_context`: Loads project documents in continuity-first order and
+  reports source paths, missing files, truncation, and omitted documents.
+- `project_checkpoint`: Creates an append-only session record, replaces the
+  current `STATE` and `HANDOFF` views, appends an entry to `PROGRESS`, and
+  appends approved `decisions` to `DECISIONS`.
+
+`obsidian_put_content` can completely overwrite an existing file. Prefer the
+safe project tool when creating project-memory documents.
 
 ### Example prompts
 
@@ -45,7 +74,8 @@ There are two ways to configure the environment with the Obsidian REST API Key.
     "env": {
       "OBSIDIAN_API_KEY": "<your_api_key_here>",
       "OBSIDIAN_HOST": "<your_obsidian_host>",
-      "OBSIDIAN_PORT": "<your_obsidian_port>"
+      "OBSIDIAN_PORT": "<your_obsidian_port>",
+      "PROJECT_MEMORY_ROOT": ""
     }
   }
 }
@@ -58,12 +88,85 @@ Sometimes Claude has issues detecting the location of uv / uvx. You can use `whi
 OBSIDIAN_API_KEY=your_api_key_here
 OBSIDIAN_HOST=your_obsidian_host
 OBSIDIAN_PORT=your_obsidian_port
+OBSIDIAN_PROTOCOL=https
+PROJECT_MEMORY_ROOT=
 ```
 
 Note:
 - You can find the API key in the Obsidian plugin config
 - Default port is 27124 if not specified
 - Default host is 127.0.0.1 if not specified
+- Default protocol is HTTPS
+- One vault represents one project by default. An empty
+  `PROJECT_MEMORY_ROOT` stores project-memory documents at the vault root.
+- Set `PROJECT_MEMORY_ROOT` to a vault-relative subdirectory only when needed.
+
+### Project document names
+
+Default logical document names include `PROJECT.md`, `STATE.md`, `ROADMAP.md`,
+`DECISIONS.md`, `TODO.md`, `HANDOFF.md`, and `PROGRESS.md`. They are defined at
+the configuration boundary rather than in project-memory business logic.
+
+You can override or add names with a JSON object:
+
+```text
+PROJECT_MEMORY_DOCUMENTS={"state":"status/CURRENT.md","progress":"PROGRESS.md"}
+```
+
+The project-memory layer only accepts relative Markdown paths, rejects `..`,
+absolute paths, backslashes, ambiguous path segments, and percent-encoded
+paths.
+
+### Safe creation limitation
+
+The Obsidian Local REST API does not provide an atomic create-only operation.
+`project_create_file_safe` performs a read-before-write check and will not
+overwrite an already observed file. Two independent MCP processes could still
+race between that check and the write. V1 assumes Claude Code and Codex work
+sequentially and leave handoffs rather than writing the same file concurrently.
+
+### Recommended agent workflow
+
+Initialize a new project vault once:
+
+```json
+{
+  "tool": "project_init",
+  "arguments": {
+    "project_name": "mcp-project-memory",
+    "description": "Persistent project context shared by coding agents"
+  }
+}
+```
+
+At the beginning of an agent session, call `project_get_context`. Its default
+order is `project`, `state`, `handoff`, `roadmap`, `todo`, `decisions`, then
+`progress`. The response identifies missing, truncated, and omitted documents
+instead of silently hiding them.
+
+At the end of a meaningful work session, call `project_checkpoint`:
+
+```json
+{
+  "agent_id": "codex",
+  "summary": "Implemented the first project-memory tools.",
+  "completed": ["Added project initialization and context loading."],
+  "files_changed": ["src/mcp_obsidian/project_memory.py"],
+  "verification": ["All tests passed."],
+  "decisions": ["Use one project per vault."],
+  "pending_approvals": [],
+  "blockers": [],
+  "next_steps": ["Run the live Obsidian smoke test on the main computer."]
+}
+```
+
+Checkpoint writes an immutable `sessions/...md` record first. It then updates
+the current state and handoff files, appends approved decisions to
+`DECISIONS.md`, and appends a human-readable entry to `PROGRESS.md`, making
+development visible from Obsidian. Items in `pending_approvals` are kept in the
+session and handoff but are not promoted into durable decisions. Checkpoint is
+intentionally not a multi-file atomic transaction; if a later write fails, the
+session file remains as the recovery record.
 
 ## Quickstart
 
@@ -138,6 +241,16 @@ To prepare the package for distribution:
 ```bash
 uv sync
 ```
+
+Run the test suite with the locked environment:
+
+```bash
+uv run --frozen pytest
+```
+
+Before using a real project vault, follow the dedicated
+[Live Obsidian Smoke Test](docs/LIVE_OBSIDIAN_SMOKE_TEST.md) against a new empty
+vault.
 
 ### Debugging
 

@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 import requests
 
-from mcp_obsidian.obsidian import Obsidian
+from mcp_obsidian.obsidian import Obsidian, ObsidianApiError
 
 
 def _make_obsidian():
@@ -51,6 +51,18 @@ def test_safe_call_formats_http_error_json_body():
 
     with pytest.raises(Exception, match="Error 40149: bad key"):
         api._safe_call(MagicMock(side_effect=error))
+
+
+def test_safe_call_preserves_http_status_and_plugin_error_code():
+    api = _make_obsidian()
+    error = requests.HTTPError(response=_http_error_response())
+
+    with pytest.raises(ObsidianApiError) as excinfo:
+        api._safe_call(MagicMock(side_effect=error))
+
+    assert excinfo.value.status_code == 401
+    assert excinfo.value.error_code == 40149
+    assert excinfo.value.message == "bad key"
 
 
 def test_safe_call_handles_http_error_empty_body():

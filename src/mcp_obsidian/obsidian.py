@@ -4,6 +4,22 @@ import urllib.parse
 import os
 from typing import Any
 
+
+class ObsidianApiError(Exception):
+    """HTTP error returned by the Obsidian Local REST API."""
+
+    def __init__(
+        self,
+        status_code: int | None,
+        error_code: int,
+        message: str,
+    ):
+        self.status_code = status_code
+        self.error_code = error_code
+        self.message = message
+        super().__init__(f"Error {error_code}: {message}")
+
+
 class Obsidian():
     def __init__(
             self, 
@@ -48,9 +64,10 @@ class Obsidian():
                     pass
             code = error_data.get('errorCode', -1) 
             message = error_data.get('message', '<unknown>')
-            raise Exception(f"Error {code}: {message}")
+            status_code = e.response.status_code if e.response is not None else None
+            raise ObsidianApiError(status_code, code, message) from e
         except requests.exceptions.RequestException as e:
-            raise Exception(f"Request failed: {str(e)}")
+            raise Exception(f"Request failed: {str(e)}") from e
 
     def list_files_in_vault(self) -> Any:
         url = f"{self.get_base_url()}/vault/"

@@ -32,6 +32,10 @@ def test_registered_tools_include_expected_new_and_existing_tools():
         "obsidian_search_by_tag",
         "obsidian_get_frontmatter",
         "obsidian_get_recent_changes",
+        "project_create_file_safe",
+        "project_init",
+        "project_get_context",
+        "project_checkpoint",
     }.issubset(names)
 
 

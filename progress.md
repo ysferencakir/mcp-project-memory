@@ -1,0 +1,428 @@
+# mcp-project-memory — İlerleme Günlüğü ve Gelişim Planı
+
+Bu dosya, deponun mevcut durumunu, alınan kararları, doğrulanmış bulguları ve sıradaki geliştirme adımlarını kaydeden yaşayan bir belgedir.
+
+## Vizyon
+
+Amaç, bir yapay zekâ modelinin bağlam penceresine güvenmek değil; bağlam penceresi sıfırlansa, konuşma kaybolsa veya agent değişse bile proje durumunun kalıcı kayıtlardan güvenilir biçimde yeniden kurulabilmesini sağlamaktır.
+
+İlk hedef tek bilgisayarda proje devamlılığıdır:
+
+- Projenin amacı, mevcut durumu, kararları ve sıradaki işleri Obsidian içindeki normal Markdown dosyalarında saklamak.
+- Claude Code ve OpenAI Codex'in aynı Obsidian vault ve aynı proje dizinini ortak hafıza olarak kullanması.
+- Yeni başlayan bir agent'ın eski konuşmaya erişmeden projeyi anlayıp kaldığı yerden devam edebilmesi.
+- Bir agent'ın çalışma sonunda açık ve doğrulanabilir bir handoff bırakması.
+- Mevcut Obsidian araçlarını bozmadan bunların üzerine proje seviyesinde küçük bir katman eklemek.
+
+Uzun vadeli hedef, aynı yaklaşımı birden çok agent ve birden çok insan için kullanılabilir hale getirmektir. Çok kullanıcılı yetkilendirme, dağıtık senkronizasyon, vektör veritabanı, embeddings ve Graphiti ilk sürümün kapsamında değildir.
+
+## Temel yaklaşım
+
+Kalıcı hafıza için doğruluk kaynağı Markdown dosyaları olacaktır. Arama indeksleri, özetler, embeddings veya grafik yapıları ileride eklenirse bunlar yeniden üretilebilir yardımcı katmanlar olmalı; ana kayıt olmamalıdır.
+
+Önerilen bilgi yaşam döngüsü:
+
+1. Agent çalışmaya başlarken proje bağlamını yükler.
+2. Çalışma sırasında önemli olaylar session kaydına eklenir.
+3. Kalıcı kararlar `DECISIONS.md` gibi yapılandırılmış belgelere terfi ettirilir.
+4. Güncel gerçek durum kısa ve düzenli bir state belgesinde tutulur.
+5. Agent işi bırakırken handoff ve sıradaki adımları günceller.
+6. Sonraki agent aynı kayıtlardan bağlamı yeniden kurar.
+
+Dosya adları iş mantığına derin biçimde gömülmeyecektir. Proje kökü ve mantıksal belge adları yapılandırmadan gelecektir. `PROJECT.md`, `STATE.md`, `ROADMAP.md`, `DECISIONS.md`, `TODO.md` ve `HANDOFF.md` yalnızca önerilen varsayılanlardır.
+
+## 2026-08-10 — Depo analizi ve çalışan taban
+
+### Yapılanlar
+
+- Deponun kaynak kodu, testleri, paket yapılandırması, README'si ve beraberindeki Local REST API OpenAPI belgesi incelendi.
+- MCP sunucu entrypoint'i ve araç kayıt mekanizması doğrulandı.
+- Obsidian REST istemcisinin okuma, arama, yazma, patch, silme, frontmatter, periyodik not ve yakın değişiklik davranışları incelendi.
+- README ile gerçek araç kaydı karşılaştırıldı.
+- Kilitli geliştirme ortamı `.venv` içinde kuruldu.
+- `uv.lock` değiştirilmeden `uv sync --frozen --all-groups` ile bağımlılıklar kuruldu.
+- Birim testleri, kapsam ölçümü ve statik tip denetimi çalıştırıldı.
+- Sunucu gerçek stdio JSON-RPC üzerinden başlatılarak `initialize` ve `tools/list` çağrıları doğrulandı.
+- Kaynak kodda uyumluluk düzeltmesine ihtiyaç olmadığı belirlendi.
+
+### Doğrulanan taban
+
+- Python: `3.13.13`
+- MCP SDK: `1.1.0`
+- Proje paketi: `mcp-obsidian 0.2.2`
+- Test sonucu: `81 passed`
+- Toplam test kapsamı: `%99`
+- `obsidian.py` kapsamı: `%100`
+- Pyright: `0 errors, 0 warnings`
+- MCP protokolü: `2024-11-05`
+- stdio initialization: başarılı
+- stdio araç listeleme: başarılı
+- Kayıtlı araç sayısı: `15`
+
+Canlı bir Obsidian vault entegrasyon testi yapılmadı. Bunun için çalışan Obsidian Local REST API eklentisi ve gerçek API anahtarı gerekir. Mevcut HTTP davranışları mock tabanlı testlerle doğrulanmaktadır.
+
+### Gerçekte kayıtlı Obsidian araçları
+
+1. `obsidian_list_files_in_dir`
+2. `obsidian_list_files_in_vault`
+3. `obsidian_get_file_contents`
+4. `obsidian_simple_search`
+5. `obsidian_patch_content`
+6. `obsidian_append_content`
+7. `obsidian_put_content`
+8. `obsidian_delete_file`
+9. `obsidian_complex_search`
+10. `obsidian_search_by_tag`
+11. `obsidian_get_frontmatter`
+12. `obsidian_batch_get_file_contents`
+13. `obsidian_get_periodic_note`
+14. `obsidian_get_recent_periodic_notes`
+15. `obsidian_get_recent_changes`
+
+README yalnızca eski araçların bir bölümünü belgeliyor. Özellikle overwrite/put, batch read, complex search, tag search, frontmatter, periodic notes ve recent changes yetenekleri eksik.
+
+## Bu repo bugün bize ne sağlıyor?
+
+Mevcut proje güçlü bir Obsidian I/O tabanı sağlıyor:
+
+- Vault ve dizin listeleme
+- Tekli ve toplu Markdown okuma
+- Basit metin araması
+- JsonLogic tabanlı karmaşık arama
+- Etiket ve frontmatter erişimi
+- Append, hedefli patch ve tam dosya overwrite
+- Onay gerektiren silme
+- Periyodik not erişimi
+- Dataview üzerinden yakın değişiklik sorgusu
+- Claude/Codex gibi MCP istemcilerinin kullanabileceği stdio sunucusu
+- UTF-8 ve Windows stdio uyumluluğu
+- Güçlü birim testi tabanı
+
+Eksik olan şey, bu düşük seviyeli yetenekleri proje devamlılığına dönüştüren kurallı proje hafızası katmanıdır. Mevcut araçlar bir dosyayı okuyup yazabilir; ancak hangi belgelerin bağlam için önemli olduğunu, agent'ın başlangıçta ne okuması gerektiğini, çalışma sonunda ne bırakması gerektiğini veya çakışmaların nasıl önleneceğini bilmiyor.
+
+## Görünen teknik borç ve riskler
+
+### Yapılandırma
+
+- `OBSIDIAN_API_KEY` modül import edilirken hem `server.py` hem `tools.py` içinde kontrol ediliyor.
+- Host, port ve protokol değerleri import zamanında yakalanıyor.
+- `OBSIDIAN_PROTOCOL` desteklenmesine rağmen README'de belgelenmiyor.
+- HTTPS varsayılan olmasına rağmen SSL doğrulaması varsayılan olarak kapalı.
+
+### Hata modeli
+
+- REST hataları genel `Exception` türüne çevriliyor.
+- HTTP durum kodu programatik olarak güvenilir biçimde ayırt edilemiyor.
+- Güvenli oluşturma gibi işlemler için `404`, bağlantı hatası ve diğer sunucu hatalarının ayrıştırılması gerekiyor.
+
+### Çalışma modeli
+
+- Senkron `requests` çağrıları async MCP event loop içinde çalışıyor.
+- Handler'lar her çağrıda yeni bir Obsidian istemcisi oluşturuyor.
+- Mevcut stdio yaklaşımında Claude ve Codex ayrı sunucu süreçleri başlatabilir. Aynı dosyaya eşzamanlı yazarlarsa süreç içi bir kilit yeterli olmaz.
+
+### Doğrulama ve dokümantasyon
+
+- Araç şemalarındaki bazı maksimum ve tür sınırları handler seviyesinde uygulanmıyor.
+- Vault yolları için proje kökü sınırı veya traversal koruması bulunmuyor.
+- Canlı Obsidian smoke/integration testi yok.
+- `obsidian_get_recent_changes` Dataview desteğine bağımlı.
+- `/periodic/{period}/recent` endpoint'i depodaki OpenAPI belgesinde görünmüyor ve canlı plugin sürümüyle doğrulanmalı.
+- `pyproject.toml` MCP bağımlılığını `mcp>=1.1.0` olarak bırakıyor; kilit dosyası ise `1.1.0` kullanıyor. Kilitli geliştirme tekrarlanabilir, fakat yayımlanmış `uvx` kurulumu ileride denenmemiş daha yeni bir SDK seçebilir.
+
+## Hedef V1 mimarisi
+
+```text
+AI Agent
+    ↓
+MCP Server
+    ↓
+Project Memory Tools
+    ↓
+Project Memory Service
+    ↓
+Existing Obsidian Client
+    ↓
+Obsidian Local REST API
+    ↓
+Shared Obsidian Vault
+```
+
+Mevcut `obsidian_*` araçları korunacaktır. Yeni `project_*` araçları bunların yanında kayıt edilecektir.
+
+Önerilen küçük modül ayrımı:
+
+- `config.py`: Obsidian bağlantısı, proje kökü ve mantıksal belge eşlemeleri
+- `project_memory.py`: yol sınırlandırma, bağlam toplama, checkpoint ve handoff kuralları
+- `project_tools.py`: MCP tool şemaları ve sonuç biçimleri
+- `obsidian.py`: mevcut REST I/O katmanı; proje kuralları buraya eklenmez
+
+## Gelişim planı
+
+### Aşama 0 — Çalışan taban
+
+Durum: tamamlandı.
+
+- Kilitli bağımlılıklar çalışıyor.
+- 81 test geçiyor.
+- 15 araç başarıyla kayıt oluyor.
+- Gerçek stdio MCP handshake çalışıyor.
+- Mevcut Obsidian işlevlerinde kaynak kod değişikliği yapılmadı.
+
+### Aşama 1 — Tek bilgisayarda minimum devamlılık
+
+Amaç: yeni bir agent'ın sıfır konuşma geçmişiyle projeyi anlayabilmesi ve işi başka bir agent'a bırakabilmesi.
+
+Önerilen sıra:
+
+1. Merkezi ve test edilebilir bir ayar nesnesi eklemek.
+2. `PROJECT_MEMORY_ROOT` ve yapılandırılabilir mantıksal belge eşlemelerini tanımlamak.
+3. HTTP durum kodlarını koruyan küçük bir `ObsidianApiError` türü eklemek.
+4. Proje kökünden kaçışı engelleyen vault-relative yol doğrulaması eklemek.
+5. `project_create_file_safe` aracını eklemek.
+6. Önerilen Markdown yapısını güvenli biçimde kuran `project_init` aracını eklemek.
+7. Başlangıç belgelerini tek çağrıda toplayan `project_get_context` aracını eklemek.
+8. Çalışma sonu state, handoff ve session kaydı üreten küçük bir `project_checkpoint` akışı eklemek.
+9. Claude Code ve Codex için aynı vault/proje kökünü kullanan örnek MCP yapılandırmaları eklemek.
+10. Gerçek Obsidian eklentisiyle opt-in smoke test eklemek.
+
+Bu aşamada yalnızca devamlılık döngüsü için gereken araçlar uygulanmalı. Karar, görev, roadmap ve araştırma için ayrı ayrı çok sayıda tool üretmek yerine ilk sürüm mevcut Obsidian araçlarını kullanabilir.
+
+#### Aşama 1 başarı ölçütleri
+
+- Yeni bir agent eski sohbeti görmeden projenin amacını, mevcut durumunu, aktif işi ve sıradaki adımları söyleyebiliyor.
+- Claude Code bir handoff bırakıp Codex aynı yerden devam edebiliyor; tersi de geçerli.
+- MCP süreci ve bilgisayar yeniden başlatıldıktan sonra bağlam kaybolmuyor.
+- Güvenli araçlar proje kökü dışına yazamıyor.
+- Var olan bir dosya varsayılan olarak sessizce overwrite edilmiyor.
+- Her bağlam parçasının hangi Markdown dosyasından geldiği görülebiliyor.
+
+### Aşama 2 — Aynı bilgisayarda birden çok agent
+
+Amaç: agent'ların sırayla veya sınırlı eşzamanlılıkla güvenli çalışması.
+
+- Her çalışmaya `agent_id`, `session_id`, başlangıç ve bitiş zamanı eklemek.
+- Session kayıtlarını append-only tutmak.
+- Dosya okuma sonuçlarına içerik hash/revision bilgisi eklemek.
+- Güncellemede `expected_revision` kontrolü yaparak eski bağlamla yazmayı reddetmek.
+- Çakışmayı sessiz overwrite yerine açık bir conflict sonucu olarak döndürmek.
+- Tek ortak MCP servisi ile agent başına ayrı stdio süreçleri seçeneklerini karşılaştırmak.
+- Aynı makinedeki süreçler için gerekirse OS seviyesinde advisory lock eklemek.
+
+Dağıtık kilitleme ve ağ üzerinden çok makine senkronizasyonu bu aşamada da kapsam dışı kalabilir.
+
+### Aşama 3 — Uzun dönem insan ve agent işbirliği
+
+Amaç: birden çok insanın ve agent'ın proje hafızasını güvenilir biçimde geliştirebilmesi.
+
+- Belge şemaları ve sürüm/migration yaklaşımı
+- Kararların kim, ne zaman ve neden bilgisiyle kaydı
+- İnsan tarafından onaylanması gereken kalıcı kararlar
+- Git ile vault geçmişi ve geri alma stratejisi
+- Agent ve insan katkıları için denetlenebilir olay günlüğü
+- Eski/stale görev ve handoff tespiti
+- Proje şablonlarının kullanıcı tarafından özelleştirilebilmesi
+- Hassas alanlar için daha sonra rol ve izin modeli
+
+### Aşama 4 — İsteğe bağlı semantik hafıza
+
+Bu aşamaya yalnızca Markdown araması ve yapılandırılmış belgeler yetersiz kalırsa geçilmeli.
+
+- Embeddings ve semantik arama
+- Yeniden üretilebilir vektör indeksi
+- Varlık/ilişki grafiği veya Graphiti değerlendirmesi
+- Uzun session geçmişinden otomatik bilgi terfisi
+- Kaynak Markdown'a geri bağlantı ve provenance
+
+Semantik katman hiçbir zaman tek doğruluk kaynağı olmamalıdır.
+
+## İlk uygulanacak araçlar için önerilen sözleşmeler
+
+### `project_create_file_safe`
+
+Amaç: proje kökü içinde yeni bir Markdown dosyasını, normal sıralı kullanımda mevcut dosyayı ezmeden oluşturmak.
+
+Önerilen girdi:
+
+```json
+{
+  "relative_path": "STATE.md",
+  "content": "# State\n"
+}
+```
+
+Kurallar:
+
+- Mutlak, boş, `..` içeren veya proje kökünden kaçabilen yollar reddedilir.
+- Dosya zaten varsa hiçbir yazma yapılmaz ve `already_exists` sonucu döner.
+- Yalnızca kesin bir `404` sonrasında oluşturma yapılır.
+- Bağlantı hatası dosya yokmuş gibi yorumlanmaz.
+- Overwrite seçeneği bu güvenli tool'a eklenmez; mevcut tehlikeli işlem açıkça `obsidian_put_content` olarak kalır.
+
+Local REST API atomik create-only işlemi sunmadığı için GET ve PUT arasındaki yarış tamamen önlenemez. V1 bunu dürüstçe belgelemeli. Eşzamanlı agent desteğinde revision kontrolü veya ortak servis/kilit çözümü eklenmelidir.
+
+### `project_get_context`
+
+Amaç: agent başlangıcında gerekli proje belgelerini tek ve deterministik çağrıda toplamak.
+
+Önerilen çıktı bölümleri:
+
+- Proje kimliği ve amacı
+- Mevcut durum
+- Aktif roadmap bölümü
+- Açık görevler
+- Son kararlar
+- Son handoff
+- Yakın session kayıtları
+- Her bölüm için kaynak dosya yolu ve okunma zamanı
+
+Bağlam büyüdüğünde sabit öncelik sırası ve açık token/karakter bütçesi kullanılmalı. Sessizce rastgele kesmek yerine hangi belgelerin dışarıda kaldığı raporlanmalıdır.
+
+### `project_checkpoint`
+
+Amaç: agent'ın iş sonunda devamlılık için gerekli minimum bilgiyi bırakması.
+
+Minimum kayıt:
+
+- Tamamlanan işler
+- Değiştirilen dosyalar
+- Çalıştırılan doğrulamalar ve sonuçları
+- Alınan kararlar ve gerekçeleri
+- Bilinen sorunlar
+- Aktif çalışma ve sıradaki somut adım
+- Agent/session kimliği ve zaman damgası
+
+Checkpoint, mevcut durum belgesini güncellerken ayrıntılı çalışma geçmişini ayrı bir append-only session kaydına yazmalıdır.
+
+## Mimari kararlar
+
+### 2026-08-10 — Kullanıcı tarafından onaylanan kararlar
+
+- Her proje ayrı bir Obsidian vault kullanacak.
+- Proje hafızası varsayılan olarak vault kökünde yaşayacak; isteğe bağlı bir alt dizin yapılandırılabilecek.
+- Claude Code ve Codex ilk sürümde çoğunlukla sırayla çalışacak ve handoff bırakacak.
+- Agent teknik kararları kalıcılaştırabilecek; kritik kararlar insan onayı gerektirecek şekilde işaretlenecek.
+- `STATE` ve `HANDOFF` güncel görünüm olarak güncellenebilecek; ayrıntılı geçmiş append-only session kayıtlarında korunacak.
+- Vault şimdilik Git ile sürümlenmeyecek.
+- Bu bilgisayar geliştirme ve mock/birim testleri için kullanılacak. Çalışan sürüm daha sonra Obsidian'ın bulunduğu ana bilgisayara kurulup canlı vault ile doğrulanacak.
+- Proje gelişiminin Obsidian içinden izlenebilmesi V1 gereksinimidir. Yapılandırılabilir bir `progress` belgesi runtime proje hafızasının parçası olacak ve ileride checkpoint akışı tarafından güncellenecek.
+
+### Hâlâ açık olan kararlar
+
+1. Proje hafızası Obsidian vault içinde hangi üst dizinde tutulacak?
+2. Varsayılan belge seti ne kadar küçük olmalı?
+3. Hangi kararların "kritik" kabul edilip insan onayı istemesi gerektiği nasıl belirlenecek?
+4. Proje bağlamı için öncelik ve maksimum boyut politikası ne olmalı?
+
+## Uygulama için varsayılan kararlar
+
+- Bir vault tek proje barındırsın ve proje hafızası varsayılan olarak vault kökünde yaşasın.
+- `PROJECT_MEMORY_ROOT`, farklı bir düzen isteyen kullanıcılar için isteğe bağlı alt dizin desteği sunsun.
+- İlk varsayılan belge seti `PROJECT`, `STATE`, `ROADMAP`, `DECISIONS`, `TODO` ve `HANDOFF` ile sınırlı kalsın.
+- Obsidian içinden gelişimi izlemek için mantıksal `progress` belgesi de yapılandırılabilir olsun.
+- `STATE` ve `HANDOFF` güncel görünüm olarak değiştirilebilsin; her checkpoint'in ayrıntısı append-only session dosyasında korunsun.
+- İlk sürüm agent'ların sırayla çalıştığını varsaysın, fakat veri modeli ileride revision kontrolünü eklemeye engel olmasın.
+- Hem mevcut düşük seviyeli `obsidian_*` araçları hem de güvenli/yüksek seviyeli `project_*` araçları birlikte sunulsun.
+- Embeddings ve graph katmanı, deterministik Markdown devamlılığı tamamlanmadan eklenmesin.
+
+## Bir sonraki önerilen geliştirme dilimi
+
+İlk kod değişikliği küçük tutulmalıdır:
+
+1. `ProjectMemoryConfig`
+2. Typed Obsidian HTTP hatası
+3. Proje yolu doğrulama
+4. `project_create_file_safe`
+5. Birim testleri ve tool registration testi
+6. README'ye yeni yapılandırma ve güvenlik sınırlarının eklenmesi
+
+Bu dilim tamamlandıktan sonra canlı Obsidian vault üzerinde create/already-exists/path-rejection senaryoları doğrulanmalı; ardından `project_get_context` tasarımına geçilmelidir.
+
+## 2026-08-10 — İlk project-memory temel dilimi
+
+### Uygulananlar
+
+- Tek proje/tek vault kararını destekleyen `ProjectMemoryConfig` eklendi.
+- Vault kökü varsayılan proje kökü yapıldı; `PROJECT_MEMORY_ROOT` isteğe bağlı alt dizin olarak bırakıldı.
+- Varsayılan mantıksal belge eşlemelerine Obsidian'dan gelişimi izlemek için `progress: PROGRESS.md` eklendi.
+- `PROJECT_MEMORY_DOCUMENTS` JSON ortam değişkeniyle belge yollarını değiştirme desteği eklendi.
+- HTTP durum kodu ve Local REST API hata kodunu koruyan `ObsidianApiError` eklendi.
+- Mutlak yol, `..`, boş segment, backslash, kontrol karakteri ve percent-encoded yol reddeden proje yolu doğrulaması eklendi.
+- Proje hafızası dosyaları `.md` ile sınırlandırıldı.
+- Mevcut dosyayı normal sıralı kullanımda overwrite etmeyen `ProjectMemory.create_file_safe` servisi eklendi.
+- `project_create_file_safe` MCP aracı kaydedildi.
+- README gerçek araç listesi, yeni yapılandırma ve güvenli oluşturmanın yarış sınırlamasıyla güncellendi.
+- Mevcut 15 `obsidian_*` aracın kaydı korundu; toplam araç sayısı 16 oldu.
+
+### Doğrulamalar
+
+- Tüm eski testler geçmeye devam ediyor.
+- Test sayısı 81'den 114'e çıktı.
+- Pyright sonucu: `0 errors, 0 warnings`.
+- Toplam kapsam: `%98`.
+- Yeni yapılandırma ve Obsidian hata modülleri: `%100` kapsam.
+- Canlı Obsidian testi bu geliştirme bilgisayarında yapılmadı; ana bilgisayara kurulum sonrasında çalıştırılacak.
+
+### Bilinen sınır
+
+Local REST API atomik create-only sağlamadığı için iki bağımsız MCP sürecinin GET ve PUT arasında yarışması hâlâ mümkündür. Onaylanan V1 çalışma modeli agent'ların sırayla çalışması ve handoff bırakmasıdır.
+
+### Sıradaki adım
+
+`project_init`, `project_get_context` ve `project_checkpoint` ile devamlılık döngüsünü tamamlamak. Canlı Obsidian kurulumunda ilk smoke test `created`, `already_exists` ve unsafe-path senaryolarını doğrulamalıdır.
+
+## 2026-08-10 — Minimum devamlılık döngüsü
+
+### Uygulananlar
+
+- `project_init`, yapılandırılmış yedi varsayılan Markdown belgesini güvenli create davranışıyla kuracak şekilde eklendi.
+- Dosya adları şablonlardan ayrıldı; şablonlar yalnızca mantıksal belge isimlerini kullanıyor.
+- `project_get_context`, belgeleri `project → state → handoff → roadmap → todo → decisions → progress` sırasında yükleyecek şekilde eklendi.
+- Context çıktısına kaynak yolu, `loaded/missing` durumu, truncation ve bütçe nedeniyle dışarıda kalan belge listesi eklendi.
+- Context bütçesi `1–200000` karakter aralığında açıkça doğrulanıyor.
+- `project_checkpoint`, ayrıntılı session kaydını önce append-only dosya olarak oluşturacak şekilde eklendi.
+- Checkpoint sonrasında `STATE.md` ve `HANDOFF.md` güncel görünüm olarak değiştiriliyor, `PROGRESS.md` ise append ile büyütülüyor.
+- Checkpoint içindeki onaylanmış `decisions` kayıtları `DECISIONS.md` dosyasına append ediliyor; `pending_approvals` kalıcı kararlara otomatik olarak terfi ettirilmiyor.
+- Kritik kararların otomatik uygulanması yerine `pending_approvals` alanında insan onayına bırakılabilmesi sağlandı.
+- Session kimliği çakışırsa güncel belgeler değiştirilmeden açık conflict hatası üretiliyor.
+- Gelişmelerin Obsidian içinden izlenmesi için her checkpoint `PROGRESS.md` içine okunabilir bir kayıt ve session bağlantısı ekliyor.
+
+### Doğrulamalar
+
+- Test sayısı `140 passed` seviyesine çıktı.
+- Pyright sonucu: `0 errors, 0 warnings`.
+- Toplam test kapsamı `%99`; yeni config, template ve project tool modülleri `%100` kapsamda.
+- Eski Obsidian araç testleri geçmeye devam ediyor.
+- Canlı Obsidian testi ana bilgisayara kurulum sonrasına bırakıldı.
+- Mevcut 15 Obsidian aracıyla birlikte toplam MCP araç sayısı 19 oldu.
+- Dört `project_*` aracın gerçek stdio `tools/list` yanıtında birlikte kayıtlı olduğu doğrulandı.
+
+### Yazma sırası ve kurtarma davranışı
+
+Checkpoint çok dosyalı atomik transaction değildir. Kurtarılabilirliği artırmak için önce değiştirilmeyen session kaydı oluşturulur; ardından state, handoff ve progress güncellenir. Daha sonraki bir yazma başarısız olursa ayrıntılı session dosyası kurtarma kaydı olarak kalır.
+
+### Sıradaki adım
+
+Ana bilgisayar kurulumu için tekrarlanabilir bir smoke-test kontrol listesi ve örnek Claude Code/Codex MCP yapılandırmaları hazırlamak. Gerçek Obsidian doğrulamasından sonra revision/hash tabanlı stale-write korumasının gerekip gerekmediği değerlendirilecek.
+
+## 2026-08-10 — Canlı Obsidian kabul testi hazırlığı
+
+- `docs/LIVE_OBSIDIAN_SMOKE_TEST.md` eklendi.
+- İlk testin gerçek proje vault'u yerine yeni ve boş bir vault üzerinde yapılması zorunlu kılındı.
+- Init idempotency, context recovery, safe create, unsafe path reddi, checkpoint etkileri, decision/pending-approval ayrımı, session conflict ve süreç yeniden başlatma senaryoları tanımlandı.
+- Test sonucunun hem repo `progress.md` hem de Obsidian `PROGRESS.md` içine kaydedilmesi istendi.
+- Gerçek Obsidian çağrıları bu geliştirme bilgisayarında çalıştırılmadı.
+
+## Günlük tutma kuralı
+
+Gelecekte her anlamlı geliştirme diliminde bu dosyaya şu bilgiler eklenmelidir:
+
+- Tarih
+- Amaç
+- Yapılan değişiklikler
+- Alınan kararlar
+- Test ve doğrulama sonuçları
+- Bilinen sınırlamalar
+- Sıradaki adım
+
+Bu dosya geliştirme günlüğüdür; runtime proje hafızasının yerini tutmaz. Runtime hafıza Obsidian vault içindeki yapılandırılmış proje belgelerinde yaşayacaktır.

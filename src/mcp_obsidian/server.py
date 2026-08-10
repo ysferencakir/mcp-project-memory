@@ -15,7 +15,7 @@ from mcp.types import (
 
 load_dotenv()
 
-from . import tools
+from . import project_tools, tools
 
 # Load environment variables
 
@@ -56,6 +56,10 @@ add_tool_handler(tools.BatchGetFileContentsToolHandler())
 add_tool_handler(tools.PeriodicNotesToolHandler())
 add_tool_handler(tools.RecentPeriodicNotesToolHandler())
 add_tool_handler(tools.RecentChangesToolHandler())
+add_tool_handler(project_tools.CreateProjectFileSafeToolHandler())
+add_tool_handler(project_tools.InitProjectToolHandler())
+add_tool_handler(project_tools.GetProjectContextToolHandler())
+add_tool_handler(project_tools.CheckpointProjectToolHandler())
 
 @app.list_tools()
 async def list_tools() -> list[Tool]:
