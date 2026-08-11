@@ -75,6 +75,13 @@ function Invoke-NativeCommand {
     }
 }
 
+function ConvertTo-PythonEncodedCommand {
+    param([string]$Source)
+
+    $encodedSource = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Source))
+    return "import base64; exec(base64.b64decode('$encodedSource'))"
+}
+
 function Get-DockerCommandPath {
     $command = Get-Command docker -ErrorAction SilentlyContinue
     if ($command) {
@@ -288,6 +295,7 @@ async def main():
 
 anyio.run(main)
 '@
+$handshakeCommand = ConvertTo-PythonEncodedCommand -Source $handshakeProbe
 
 $handshakeOutput = & $dockerCommand @(
     "run",
@@ -300,7 +308,7 @@ $handshakeOutput = & $dockerCommand @(
     "PROJECT_MEMORY_ROOT",
     $imageName,
     "-c",
-    $handshakeProbe
+    $handshakeCommand
 )
 if ($LASTEXITCODE -ne 0) {
     throw "Container initialization probe failed (exit code $LASTEXITCODE)."
@@ -313,13 +321,17 @@ Write-Host "Container initialization OK: $handshakeLine"
 
 $obsidianProbe = @(
     "import os",
+    "import re",
     "import requests",
     "import urllib3",
     "from mcp_obsidian.obsidian import Obsidian",
     "urllib3.disable_warnings()",
     "status = requests.get('https://host.docker.internal:27124/', verify=False, timeout=(3, 6)).json()",
     "plugin_version = status.get('versions', {}).get('self')",
-    "assert plugin_version == '4.1.7', f'Expected Local REST API 4.1.7, found {plugin_version}'",
+    "version_match = re.fullmatch(r'(\d+)\.(\d+)\.(\d+)', plugin_version or '')",
+    "assert version_match, f'Expected Local REST API >=4.1.7 and <6.0.0, found {plugin_version}'",
+    "plugin_version_tuple = tuple(map(int, version_match.groups()))",
+    "assert (4, 1, 7) <= plugin_version_tuple < (6, 0, 0), f'Expected Local REST API >=4.1.7 and <6.0.0, found {plugin_version}'",
     "client = Obsidian(api_key=os.environ['OBSIDIAN_API_KEY'], host='host.docker.internal', port=27124, protocol='https')",
     "client.list_files_in_vault()",
     "print('OBSIDIAN_OK|' + plugin_version)"
@@ -336,10 +348,11 @@ $obsidianOutput = & $dockerCommand @(
     "-c",
     $obsidianProbe
 )
-if ($LASTEXITCODE -ne 0 -or $obsidianOutput -notcontains "OBSIDIAN_OK|4.1.7") {
-    throw "Container could not validate Obsidian Local REST API 4.1.7. Keep Obsidian and the compatible plugin open, verify the API key, then rerun this script."
+$obsidianLine = [string]($obsidianOutput | Select-Object -Last 1)
+if ($LASTEXITCODE -ne 0 -or $obsidianLine -notmatch "^OBSIDIAN_OK\|(?<version>\d+\.\d+\.\d+)$") {
+    throw "Container could not validate a compatible Obsidian Local REST API version (>=4.1.7 and <6.0.0). Keep Obsidian and the compatible plugin open, verify the API key, then rerun this script."
 }
-Write-Host "Obsidian connection OK: Local REST API 4.1.7."
+Write-Host "Obsidian connection OK: Local REST API $($Matches['version'])."
 
 [Environment]::SetEnvironmentVariable("OBSIDIAN_API_KEY", $apiKey, "User")
 [Environment]::SetEnvironmentVariable(

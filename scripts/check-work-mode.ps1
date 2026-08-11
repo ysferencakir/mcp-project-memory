@@ -26,6 +26,13 @@ function Write-CheckWarn {
     Write-Host "[WARN] $Message" -ForegroundColor Yellow
 }
 
+function ConvertTo-PythonEncodedCommand {
+    param([string]$Source)
+
+    $encodedSource = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Source))
+    return "import base64; exec(base64.b64decode('$encodedSource'))"
+}
+
 function Get-DockerCommandPath {
     $command = Get-Command docker -ErrorAction SilentlyContinue
     if ($command) {
@@ -190,6 +197,7 @@ async def main():
 
 anyio.run(main)
 '@
+        $handshakeCommand = ConvertTo-PythonEncodedCommand -Source $handshakeProbe
 
         try {
             $handshakeOutput = & $dockerCommand @(
@@ -203,8 +211,8 @@ anyio.run(main)
                 "PROJECT_MEMORY_ROOT",
                 $imageName,
                 "-c",
-                $handshakeProbe
-            ) 2>&1
+                $handshakeCommand
+            )
             $handshakeLine = [string]($handshakeOutput | Select-Object -Last 1)
             if ($LASTEXITCODE -ne 0 -or $handshakeLine -notmatch "^1\.29\.0\|mcp-project-memory\|[^|]+\|19$") {
                 Write-CheckFail "MCP container initialize/tools-list probe failed. Run INSTALL.cmd."
@@ -225,13 +233,17 @@ anyio.run(main)
         $env:OBSIDIAN_API_KEY = $apiKey
         $obsidianProbe = @(
             "import os",
+            "import re",
             "import requests",
             "import urllib3",
             "from mcp_obsidian.obsidian import Obsidian",
             "urllib3.disable_warnings()",
             "status = requests.get('https://host.docker.internal:27124/', verify=False, timeout=(3, 6)).json()",
             "plugin_version = status.get('versions', {}).get('self')",
-            "assert plugin_version == '4.1.7', f'Expected Local REST API 4.1.7, found {plugin_version}'",
+            "version_match = re.fullmatch(r'(\d+)\.(\d+)\.(\d+)', plugin_version or '')",
+            "assert version_match, f'Expected Local REST API >=4.1.7 and <6.0.0, found {plugin_version}'",
+            "plugin_version_tuple = tuple(map(int, version_match.groups()))",
+            "assert (4, 1, 7) <= plugin_version_tuple < (6, 0, 0), f'Expected Local REST API >=4.1.7 and <6.0.0, found {plugin_version}'",
             "client = Obsidian(api_key=os.environ['OBSIDIAN_API_KEY'], host='host.docker.internal', port=27124, protocol='https')",
             "client.list_files_in_vault()",
             "print('OBSIDIAN_OK|' + plugin_version)"
@@ -249,11 +261,12 @@ anyio.run(main)
                 "-c",
                 $obsidianProbe
             ) 2>&1
-            if ($LASTEXITCODE -ne 0 -or $obsidianOutput -notcontains "OBSIDIAN_OK|4.1.7") {
-                Write-CheckFail "Obsidian Local REST API 4.1.7 authentication failed. Keep Obsidian open and verify its plugin/API key."
+            $obsidianLine = [string]($obsidianOutput | Select-Object -Last 1)
+            if ($LASTEXITCODE -ne 0 -or $obsidianLine -notmatch "^OBSIDIAN_OK\|(?<version>\d+\.\d+\.\d+)$") {
+                Write-CheckFail "Compatible Obsidian Local REST API authentication failed (requires >=4.1.7 and <6.0.0). Keep Obsidian open and verify its plugin/API key."
             }
             else {
-                Write-CheckOk "Obsidian Local REST API 4.1.7 is reachable and authenticated."
+                Write-CheckOk "Obsidian Local REST API $($Matches['version']) is reachable and authenticated."
             }
         }
         catch {

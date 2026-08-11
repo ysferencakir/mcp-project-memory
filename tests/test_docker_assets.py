@@ -102,7 +102,15 @@ def test_work_mode_setup_script_is_non_blocking_and_secret_safe():
     assert "await session.list_tools()" in script
     assert 'validate_relative_path(os.environ["PROJECT_MEMORY_ROOT"]' in script
     assert "assert len(tools.tools) == 19" in script
-    assert "assert plugin_version == '4.1.7'" in script
+    assert "ConvertTo-PythonEncodedCommand -Source $handshakeProbe" in script
+    assert "exec(base64.b64decode('$encodedSource'))" in script
+    handshake_invocation = script[
+        script.index("$handshakeOutput =") : script.index("$handshakeLine =")
+    ]
+    assert "$handshakeCommand" in handshake_invocation
+    assert "$handshakeProbe" not in handshake_invocation
+    assert "assert (4, 1, 7) <= plugin_version_tuple < (6, 0, 0)" in script
+    assert "assert plugin_version ==" not in script
     assert script.index('[Environment]::SetEnvironmentVariable("OBSIDIAN_API_KEY"') > (
         script.index('Write-Host "Obsidian connection OK:')
     )
@@ -144,8 +152,21 @@ def test_work_mode_check_is_read_only_secret_safe_and_exercises_live_stack():
     assert "await session.list_tools()" in script
     assert "assert len(tools.tools) == 19" in script
     assert "^1\\.29\\.0\\|mcp-project-memory\\|[^|]+\\|19$" in script
+    assert "ConvertTo-PythonEncodedCommand -Source $handshakeProbe" in script
+    handshake_invocation = script[
+        script.index("$handshakeOutput =") : script.index("$handshakeLine =")
+    ]
+    assert "$handshakeCommand" in handshake_invocation
+    assert "$handshakeProbe" not in handshake_invocation
+    assert "2>&1" not in handshake_invocation
+    assert (
+        'Write-CheckFail "MCP container could not be started for its handshake. '
+        'Run INSTALL.cmd."' in script
+    )
     assert "client.list_files_in_vault()" in script
-    assert "OBSIDIAN_OK|4.1.7" in script
+    assert "assert (4, 1, 7) <= plugin_version_tuple < (6, 0, 0)" in script
+    assert "assert plugin_version ==" not in script
+    assert "^OBSIDIAN_OK\\|(?<version>\\d+\\.\\d+\\.\\d+)$" in script
     assert '(?m)^required\\s*=\\s*false\\s*$' in script
     assert '"run",' in script
     assert '"--rm",' in script

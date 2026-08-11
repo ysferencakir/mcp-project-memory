@@ -16,7 +16,8 @@ Bu kontrol listesi, birim ve MCP protokol testleri geçen sürümün gerçek Obs
 2. `uv` kurulu.
 3. Repo ana bilgisayara klonlanmış.
 4. Obsidian kurulu ve test vault'u açık.
-5. Obsidian Local REST API community plugin `4.1.7` kurulu ve etkin.
+5. Obsidian Local REST API community plugin `>=4.1.7` ve `<6.0.0` kurulu ve
+   etkin.
 6. Plugin API anahtarı alınmış.
 7. HTTPS için varsayılan port `27124`; HTTP kullanılıyorsa plugin portuyla birlikte protokol açıkça ayarlanmış.
 

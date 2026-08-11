@@ -42,13 +42,12 @@ için [Ana bilgisayar kurulumu](docs/MAIN_COMPUTER_SETUP.md) ve
 - Git
 - Docker Desktop
 - Obsidian
-- Obsidian Local REST API community eklentisi `4.1.7`
+- Obsidian Local REST API community eklentisi `>=4.1.7` ve `<6.0.0`
 - Codex; daha sonra istenirse Claude Code
 - Kullanılacak mevcut Obsidian vault'u ve kaynak kod reposu
 
-V1'in 15 mevcut Obsidian aracı Local REST API `4.1.7` ile doğrulandı. Eklenti
-`5.x`, bazı upstream endpoint'leri kaldırdığı için tam V1 uyumluluk sürümü
-olarak kabul edilmez.
+Kurulum ve bağlantı kontrolleri Local REST API `4.1.7` ve `5.1.0` ile
+çalışacak biçimde tasarlanmıştır. `>=4.1.7` ve `<6.0.0` sürümleri kabul edilir.
 
 Mevcut vault önemli veri içeriyorsa kuruluma başlamadan önce normal yedeğini
 alın. MCP sunucusu vault'a REST API üzerinden erişir; vault container'a mount
@@ -64,7 +63,7 @@ Set-Location C:\Tools\mcp-project-memory
 ### 3. Obsidian bağlantısını hazırlayın
 
 1. Kullanılacak vault'u Obsidian'da açın.
-2. Local REST API `4.1.7` eklentisini etkinleştirin.
+2. Uyumlu bir Local REST API (`>=4.1.7`, `<6.0.0`) eklentisini etkinleştirin.
 3. HTTPS portunun `27124` olduğunu doğrulayın.
 4. Eklenti ayarındaki API anahtarını kopyalayın.
 
@@ -99,8 +98,8 @@ ve şunları sırayla yapar:
 - Docker Desktop'ın hazır olduğunu kontrol eder.
 - Image'ı kilitli bağımlılıklarla oluşturur.
 - Container içinde gerçek MCP `initialize` ve `tools/list` çağrılarını yapar.
-- Container'dan Obsidian bağlantısını, API anahtarını ve Local REST API
-  `4.1.7` sürümünü doğrular.
+- Container'dan Obsidian bağlantısını, API anahtarını ve uyumlu Local REST API
+  sürümünü (`>=4.1.7`, `<6.0.0`) doğrular.
 - Ortam değişkenlerini Windows kullanıcı kapsamında kaydeder.
 - Mevcut `%USERPROFILE%\.codex\config.toml` dosyasını yedekleyip yalnız
   `project_memory` bloğunu ekler veya günceller.

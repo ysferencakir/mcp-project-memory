@@ -22,12 +22,11 @@ mount edilmez. Mevcut vault önemli veri içeriyorsa önce yedek alın.
 - Git
 - Docker Desktop
 - Obsidian
-- Obsidian Local REST API `4.1.7`
+- Obsidian Local REST API `>=4.1.7` ve `<6.0.0`
 - Codex veya Claude Code
 
-V1'in 15 upstream Obsidian aracı `4.1.7` ile doğrulanmıştır. Local REST API
-`5.x`, periodic-note endpoint'lerini kaldırdığı için tam V1 uyumluluk sürümü
-değildir.
+Kurulum ve bağlantı kontrolleri Local REST API `4.1.7` ve `5.1.0` ile
+çalışacak biçimde tasarlanmıştır. `>=4.1.7` ve `<6.0.0` sürümleri kabul edilir.
 
 ## 3. Sunucuyu kurun
 
@@ -75,10 +74,11 @@ boş bırakıp Enter'a basın. Ardından Local REST API anahtarını güvenli gi
 ister; anahtara `Bearer ` eklemeyin.
 
 Betik yapılandırmayı yazmadan önce Docker build, gerçek MCP `initialize`, 19
-araçlık `tools/list`, Local REST API `4.1.7`, API anahtarı ve container'dan
-Obsidian erişimini kontrol eder. Ardından Windows kullanıcı ortamını ve
-kullanıcı-geneli `%USERPROFILE%\.codex\config.toml` dosyasını günceller. Var olan config önce
-zaman damgalı bir dosyaya yedeklenir; diğer ayarlar korunur.
+araçlık `tools/list`, uyumlu Local REST API sürümü (`>=4.1.7`, `<6.0.0`), API
+anahtarı ve container'dan Obsidian erişimini kontrol eder. Ardından Windows
+kullanıcı ortamını ve kullanıcı-geneli `%USERPROFILE%\.codex\config.toml`
+dosyasını günceller. Var olan config önce zaman damgalı bir dosyaya yedeklenir;
+diğer ayarlar korunur.
 
 Bir kontrol başarısız olursa `project_memory` bloğu yazılmaz. Yapılandırma
 `required = false` kullanır; Docker veya sunucu daha sonra çalışmazsa yalnız
