@@ -45,6 +45,8 @@ def test_codex_docker_config_preserves_stdio_and_secret_forwarding():
     assert "--network" not in server["args"]
     assert "OBSIDIAN_HOST=host.docker.internal" in server["args"]
     assert "PROJECT_MEMORY_ROOT" in server["args"]
+    assert server["enabled"] is True
+    assert server["required"] is False
 
 
 def test_claude_docker_config_is_valid_json_and_uses_same_image():
@@ -66,3 +68,55 @@ def test_claude_docker_config_is_valid_json_and_uses_same_image():
     assert "OBSIDIAN_HOST=host.docker.internal" in server["args"]
     assert server["env"]["OBSIDIAN_API_KEY"] == "${OBSIDIAN_API_KEY}"
     assert server["env"]["PROJECT_MEMORY_ROOT"] == "${PROJECT_MEMORY_ROOT}"
+
+
+def test_work_mode_setup_script_is_non_blocking_and_secret_safe():
+    script = (REPO_ROOT / "scripts" / "setup-work-mode.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "Read-Host \"Obsidian Local REST API key\" -AsSecureString" in script
+    assert 'Read-Host "Vault-relative project memory folder' in script
+    assert '$PSBoundParameters.ContainsKey("ProjectMemoryRoot")' in script
+    assert 'StartsWith("Bearer "' in script
+    assert 'PROJECT_MEMORY_ROOT must be vault-relative' in script
+    assert 'Join-Path $env:USERPROFILE ".codex"' in script
+    assert 'Programs\\DockerDesktop\\resources\\bin\\docker.exe' in script
+    assert 'C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe' in script
+    assert "config.toml.backup-" not in script
+    assert 'Copy-Item -LiteralPath $Path -Destination $backupPath' in script
+    assert 'required = false' in script
+    assert '@("build", "--pull", "-t", $ImageName, $repoRoot)' in script
+
+    # The permanent environment and non-blocking Codex config are written only
+    # after both the real MCP handshake and the required Obsidian probe.
+    assert "await session.initialize()" in script
+    assert "await session.list_tools()" in script
+    assert 'validate_relative_path(os.environ["PROJECT_MEMORY_ROOT"]' in script
+    assert "assert len(tools.tools) == 19" in script
+    assert "assert plugin_version == '4.1.7'" in script
+    assert script.index('[Environment]::SetEnvironmentVariable("OBSIDIAN_API_KEY"') > (
+        script.index('Write-Host "Obsidian connection OK:')
+    )
+    assert script.index("Set-CodexConfiguration -Path $configPath") > script.index(
+        "await session.list_tools()"
+    )
+
+
+def test_mcp_sdk_uses_current_maintained_v1_release():
+    project = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+
+    assert "mcp==1.29.0" in project["project"]["dependencies"]
+
+
+def test_all_codex_examples_keep_work_usable_when_memory_is_offline():
+    for filename in (
+        "codex-config.toml.example",
+        "codex-docker-config.toml.example",
+    ):
+        path = REPO_ROOT / "docs" / "config-examples" / filename
+        config = tomllib.loads(path.read_text(encoding="utf-8"))
+        server = config["mcp_servers"]["project_memory"]
+
+        assert server["enabled"] is True
+        assert server["required"] is False

@@ -35,6 +35,19 @@ sabitler. Uygulama bağımlılıkları `uv.lock` üzerinden
 Image içinde API anahtarı veya vault verisi bulunmaz ve runtime root olmayan
 `mcp` kullanıcısıyla çalışır.
 
+Windows + Docker Desktop + ChatGPT Work mode için image oluşturma,
+MCP/Obsidian ön kontrolleri ve Codex yapılandırması tek komutla da yapılabilir:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-work-mode.ps1
+```
+
+Bu önerilen kurulum yoludur. Betik gerçek stdio `initialize` ve `tools/list`
+akışını doğrulamadan Codex yapılandırmasını yazmaz. Yapılandırma
+`required = false` kullanır; sunucu daha sonra çalışmazsa Work sohbetinin
+açılmasını engellemez. Ayrıntı için
+[ana bilgisayar kurulumuna](MAIN_COMPUTER_SETUP.md) bakın.
+
 ## Manuel stdio başlatma
 
 Repo kökündeki Git-ignore `.env` dosyası en az şu değerleri içermelidir:
@@ -95,6 +108,10 @@ başlangıcından sonra aynı kalıcı context doğrulandı.
 Bu repoya Docker CLI kurulu olmayan bir bilgisayarda Dockerfile ve
 yapılandırmalar statik test edilir; gerçek build/run sonucu başarılı olarak
 varsayılmaz.
+
+Uygulama, kırıcı 2.x geçişine kadar düşük seviyeli Server API'siyle uyumlu
+MCP Python SDK `1.29.0` sürümüne sabitlenmiştir. Image oluşturulurken bu sürüm
+`uv.lock` üzerinden yeniden üretilebilir biçimde kurulur.
 
 ## Referanslar
 

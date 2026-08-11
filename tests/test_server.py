@@ -46,7 +46,7 @@ def test_initialization_advertises_project_memory_instructions():
     options = server.app.create_initialization_options()
 
     assert options.server_name == "mcp-project-memory"
-    assert options.server_version == "0.2.2"
+    assert options.server_version == server.SERVER_VERSION
     assert options.instructions == server.SERVER_INSTRUCTIONS
     assert options.instructions.startswith(
         "This server is the durable project-memory authority"

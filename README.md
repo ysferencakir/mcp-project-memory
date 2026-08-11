@@ -54,21 +54,12 @@ Mevcut vault önemli veri içeriyorsa kuruluma başlamadan önce normal yedeğin
 alın. MCP sunucusu vault'a REST API üzerinden erişir; vault container'a mount
 edilmez.
 
-### 2. Sunucuyu klonlayın ve image'ı oluşturun
+### 2. Sunucuyu klonlayın
 
 ```powershell
 git clone https://github.com/ysferencakir/mcp-project-memory.git C:\Tools\mcp-project-memory
 Set-Location C:\Tools\mcp-project-memory
-docker build --pull -t mcp-project-memory:local .
 ```
-
-Image API anahtarını içermez, kilitli `uv.lock` bağımlılıklarını kullanır ve
-root olmayan `mcp` kullanıcısıyla çalışır.
-
-MCP Python SDK `1.6.0` sürümüne sabitlenmiştir. Upstream'in kullandığı
-düşük seviyeli Server API'sini koruyan ve Work/Codex için initialization
-`instructions` alanını desteklediği doğrulanan kontrollü uyumluluk
-yükseltmesidir; genel bir bağımlılık yükseltmesi değildir.
 
 ### 3. Obsidian bağlantısını hazırlayın
 
@@ -80,7 +71,7 @@ yükseltmesidir; genel bir bağımlılık yükseltmesi değildir.
 API anahtarını repoya, Dockerfile'a, `.codex/config.toml` veya `.mcp.json`
 içine yazmayın.
 
-### 4. Proje kökünü seçin
+### 4. Tek komutla Work mode kurulumunu tamamlayın
 
 `PROJECT_MEMORY_ROOT`, Obsidian vault'una göreli klasördür:
 
@@ -89,50 +80,59 @@ içine yazmayın.
 - Başında `/` kullanmayın, `..` kullanmayın ve Windows `\` ayıracı
   kullanmayın.
 
-ChatGPT masaüstü Work mode için değişkenleri Windows kullanıcı ortamında
-tanımlayın:
+Obsidian açıkken aşağıdaki tek komutu çalıştırın:
 
 ```powershell
-[Environment]::SetEnvironmentVariable("OBSIDIAN_API_KEY", "LOCAL_REST_API_KEY", "User")
-[Environment]::SetEnvironmentVariable("PROJECT_MEMORY_ROOT", "Projects/MyExistingApp", "User")
+powershell -ExecutionPolicy Bypass -File .\scripts\setup-work-mode.ps1
 ```
 
-Anahtar değeri yalnızca Local REST API token'ı olmalıdır; başına
-`Bearer ` eklemeyin. Vault yalnız bir projeyse ikinci değer `""` olabilir.
-Masaüstü uygulamasını tamamen kapatıp yeniden açmadan yeni değişkenler
-görülmez.
+Betik önce vault-relative proje klasörünü sorar; vault yalnız bu projeye aitse
+boş bırakıp Enter'a basın. Ardından API anahtarını ekranda göstermeden ister
+ve şunları sırayla yapar:
 
-Hazır şablon için
-[`project-memory.env.ps1.example`](docs/config-examples/project-memory.env.ps1.example)
-dosyasını Git-ignore edilen `.project-memory.env.ps1` adına kopyalayabilirsiniz.
+- Docker Desktop'ın hazır olduğunu kontrol eder.
+- Image'ı kilitli bağımlılıklarla oluşturur.
+- Container içinde gerçek MCP `initialize` ve `tools/list` çağrılarını yapar.
+- Container'dan Obsidian bağlantısını, API anahtarını ve Local REST API
+  `4.1.7` sürümünü doğrular.
+- Ortam değişkenlerini Windows kullanıcı kapsamında kaydeder.
+- Mevcut `%USERPROFILE%\.codex\config.toml` dosyasını yedekleyip yalnız
+  `project_memory` bloğunu ekler veya günceller.
 
-### 5. ChatGPT Work mode ve Codex'i bağlayın
+Kontroller başarısız olursa betik Codex yapılandırmasını değiştirmez. Daha
+önce kayıtlı anahtarı değiştirmek için `-ResetApiKey` ekleyin. Image zaten
+aynı commit'ten oluşturulduysa tekrar denemede `-SkipBuild` kullanılabilir.
 
-Work mode her sohbetten aynı sunucuyu görebilsin diye kullanıcı-geneli
-`%USERPROFILE%\.codex\config.toml` dosyasını kullanın:
+Yapılandırma `required = false` kullanır. Docker veya project-memory daha sonra
+başlatılamazsa yeni Work sohbetleri yine açılır; yalnız ilgili MCP araçları
+kullanılamaz görünür. Bağlam gerektiren proje işine `/mcp` içinde
+`project_memory` bağlı görünmeden başlanmamalıdır.
 
-```powershell
-$codexConfigDir = Join-Path $env:USERPROFILE ".codex"
-New-Item -ItemType Directory -Force $codexConfigDir
-notepad (Join-Path $codexConfigDir "config.toml")
-```
+Image API anahtarını içermez, kilitli `uv.lock` bağımlılıklarını kullanır ve
+root olmayan `mcp` kullanıcısıyla çalışır. MCP Python SDK, mevcut düşük
+seviyeli Server API'siyle uyumlu güncel bakım serisi olan `1.29.0` sürümüne
+sabitlenmiştir. Kırıcı değişiklik içeren SDK 2.x'e geçiş ayrı bir çalışma
+olacaktır.
 
-Mevcut ayarları silmeden
-[`codex-docker-config.toml.example`](docs/config-examples/codex-docker-config.toml.example)
-içindeki `[mcp_servers.project_memory]` bloğunu dosyaya bir kez ekleyin.
-Ardından masaüstü uygulamasını yeniden başlatın veya CLI'da:
+### 5. Work mode bağlantısını doğrulayın
+
+ChatGPT masaüstü uygulamasını sistem tepsisi dahil tamamen kapatıp yeniden
+açın. Yeni bir Work sohbetinde `/mcp` görünümünde `project_memory` ve toplam
+19 araç görünmelidir. CLI kuruluysa ek olarak:
 
 ```powershell
 codex mcp list
 ```
 
-Codex TUI veya masaüstü uygulamasında `/mcp` görünümünde `project_memory`
-sunucusunu ve toplam 19 aracı doğrulayın. Proje kapsamındaki
-`.codex/config.toml` yalnız güvenilen Codex projelerinde yüklenir ve Work mode
-için önerilen ana yapılandırma değildir. Masaüstü, CLI ve IDE istemcileri aynı
-host yapılandırmasını paylaşır; güncel biçim için
+Betik kullanıcı-geneli `%USERPROFILE%\.codex\config.toml` dosyasını kullanır;
+repo içinde `.codex` klasörü oluşturmanız gerekmez. Masaüstü, CLI ve IDE
+istemcileri aynı host yapılandırmasını paylaşır. Güncel biçim için
 [resmi OpenAI MCP belgesine](https://learn.chatgpt.com/docs/extend/mcp?surface=cli)
 bakın.
+
+Betik kullanılamazsa ayrıntılı elle kurulum için
+[Ana bilgisayar kurulumu](docs/MAIN_COMPUTER_SETUP.md#elle-kurulum-yedek-yol)
+bölümünü izleyin.
 
 ### 6. Claude Code'u bağlayın
 
@@ -327,6 +327,7 @@ Canlı kabul adımları:
 - [Canlı Obsidian smoke testi](docs/LIVE_OBSIDIAN_SMOKE_TEST.md)
 - [Agent memory protokolü](docs/AGENT_MEMORY_PROTOCOL.md)
 - [Docker ayrıntıları](docs/DOCKER_SETUP.md)
+- [Kurulum hazır oluş ve risk raporu](docs/INSTALLATION_READINESS_REPORT.md)
 
 Testler ve `openapi.yaml` geliştirme/uyumluluk varlıklarıdır; yayınlanan Docker
 runtime image'ına dahil edilmezler.

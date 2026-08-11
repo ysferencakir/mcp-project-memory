@@ -10,7 +10,7 @@ env_vars = ["OBSIDIAN_API_KEY", "PROJECT_MEMORY_ROOT"]
 startup_timeout_sec = 20
 tool_timeout_sec = 60
 enabled = true
-required = true
+required = false
 
 [mcp_servers.project_memory.env]
 OBSIDIAN_HOST = "127.0.0.1"

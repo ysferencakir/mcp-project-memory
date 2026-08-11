@@ -26,4 +26,4 @@ env_vars = ["OBSIDIAN_API_KEY", "PROJECT_MEMORY_ROOT"]
 startup_timeout_sec = 30
 tool_timeout_sec = 60
 enabled = true
-required = true
+required = false

@@ -2,6 +2,7 @@ import json
 import logging
 from collections.abc import Sequence
 from functools import lru_cache
+from importlib.metadata import version
 from typing import Any
 import os
 from dotenv import load_dotenv
@@ -33,10 +34,11 @@ Call project_init only when project_get_context confirms that memory is not init
 
 Before completing meaningful work or handing off, verify the work, reconcile ROADMAP and TODO with evidence, leave partial or uncertain items open, read changed planning documents back, and call project_checkpoint with an honest summary, completed work, changed files, verification, decisions, pending approvals, blockers, and next steps. Do not claim that context was persisted unless the checkpoint succeeds and returns a session path. A simple read-only answer that does not advance the project does not require a checkpoint."""
 
+SERVER_VERSION = version("mcp-obsidian")
 
 app = Server(
     "mcp-project-memory",
-    version="0.2.2",
+    version=SERVER_VERSION,
     instructions=SERVER_INSTRUCTIONS,
 )
 
