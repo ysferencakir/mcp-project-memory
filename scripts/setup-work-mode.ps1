@@ -13,6 +13,13 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+trap {
+    Write-Host ""
+    Write-Host "INSTALL FAILED: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "This failed run did not write a new Codex configuration."
+    exit 1
+}
+
 $repoRoot = Split-Path -Parent $PSScriptRoot
 $configDirectory = Join-Path $env:USERPROFILE ".codex"
 $configPath = Join-Path $configDirectory "config.toml"
@@ -126,11 +133,15 @@ public static class ProjectMemoryEnvironment {
 }
 
 function Set-CodexConfiguration {
-    param([string]$Path)
+    param(
+        [string]$Path,
+        [string]$DockerCommandPath
+    )
 
-    $block = @'
+    $escapedDockerCommand = $DockerCommandPath.Replace("\", "\\").Replace('"', '\"')
+    $block = @"
 [mcp_servers.project_memory]
-command = "docker"
+command = "$escapedDockerCommand"
 args = [
   "run",
   "--rm",
@@ -152,7 +163,7 @@ startup_timeout_sec = 30
 tool_timeout_sec = 60
 enabled = true
 required = false
-'@
+"@
 
     New-Item -ItemType Directory -Force -Path (Split-Path -Parent $Path) | Out-Null
     $existing = if (Test-Path -LiteralPath $Path) {
@@ -338,7 +349,7 @@ Write-Host "Obsidian connection OK: Local REST API 4.1.7."
 )
 Publish-EnvironmentChange
 
-Set-CodexConfiguration -Path $configPath
+Set-CodexConfiguration -Path $configPath -DockerCommandPath $dockerCommand
 
 $apiKey = $null
 $env:OBSIDIAN_API_KEY = $null

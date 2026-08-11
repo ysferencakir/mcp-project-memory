@@ -36,7 +36,12 @@ Image içinde API anahtarı veya vault verisi bulunmaz ve runtime root olmayan
 `mcp` kullanıcısıyla çalışır.
 
 Windows + Docker Desktop + ChatGPT Work mode için image oluşturma,
-MCP/Obsidian ön kontrolleri ve Codex yapılandırması tek komutla da yapılabilir:
+MCP/Obsidian ön kontrolleri ve Codex yapılandırmasının önerilen yolu repo
+kökündeki `INSTALL.cmd` dosyasına çift tıklamaktır. Kurulum sonrası
+`CHECK.cmd`, aynı canlı kontrolleri sır göstermeden tekrarlar; `DISABLE.cmd`
+yalnız sorunlu `project_memory` Codex bloğunu güvenli biçimde kapatır.
+
+Komut satırı karşılığı:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\setup-work-mode.ps1

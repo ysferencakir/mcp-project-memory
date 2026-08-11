@@ -53,9 +53,18 @@ Projects/MyExistingApp
 Başında slash, `..`, ters slash veya URL-encoded parça kullanmayın. Vault
 yalnız bu projeye aitse kök boş bırakılabilir.
 
-## 5. Önerilen otomatik Work mode kurulumu
+## 5. Önerilen tak-çalıştır Work mode kurulumu
 
-Docker Desktop, Obsidian ve Local REST API eklentisi açıkken repo kökünde:
+Docker Desktop, Obsidian ve Local REST API eklentisi açıkken repo kökündeki
+`INSTALL.cmd` dosyasına çift tıklayın. Yalnız vault'a göreli proje hafıza
+klasörünü ve `Bearer ` öneki olmayan API anahtarını girin. Vault yalnız bu
+projeye aitse ilk soruyu boş bırakın.
+
+Kurulum tamamlanınca `CHECK.cmd` dosyasına çift tıklayın. Tüm satırlar `[OK]`
+ve sonuç `ALL CHECKS PASSED` olmalıdır. Bu kontrol API anahtarını veya vault
+içeriğini yazdırmaz.
+
+PowerShell kullananlar için aynı kurulumun komut satırı karşılığı:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\setup-work-mode.ps1
@@ -93,23 +102,32 @@ kullanıcı-geneli Codex yapılandırmasını kullanır. Resmi biçim:
 
 ### Work sohbeti MCP yüzünden açılamıyorsa
 
-Kullanıcı-geneli config'i açın:
-
-```powershell
-notepad "$env:USERPROFILE\.codex\config.toml"
-```
-
-Yalnız `[mcp_servers.project_memory]` bloğunda şu değerleri kullanın:
+Repo kökündeki `DISABLE.cmd` dosyasına çift tıklayın. Betik kullanıcı-geneli
+config'i yedekler ve yalnız `[mcp_servers.project_memory]` bloğunu şu güvenli
+duruma getirir:
 
 ```toml
 enabled = false
 required = false
 ```
 
-Bu işlem diğer MCP sunucularını etkilemez. ChatGPT'yi sistem tepsisi dahil
-tamamen kapatıp açtıktan sonra Work tekrar açılır. Sorun giderilince kurulum
-betiğini yeniden çalıştırmak bloğu güvenli biçimde `enabled = true` ve
-`required = false` durumuna getirir.
+Diğer MCP sunucuları, Docker image'ı, ortam değişkenleri ve Obsidian vault'u
+korunur. ChatGPT'yi sistem tepsisi dahil tamamen kapatıp açın. Sorun
+giderilince `INSTALL.cmd` bağlantıyı yeniden doğrular ve etkinleştirir.
+
+Yalnız elle müdahale gerekirse kullanıcı-geneli config'i açın:
+
+```powershell
+notepad "$env:USERPROFILE\.codex\config.toml"
+```
+
+Yalnız `[mcp_servers.project_memory]` bloğundaki `enabled` ve `required`
+değerlerini yukarıdaki gibi `false` yapın; diğer tabloları değiştirmeyin.
+
+Bu üç yardımcı dosya Docker Desktop, Obsidian veya eklentiyi kurmaz ve
+ChatGPT'yi kendiliğinden kapatmaz. Windows açılışında Docker Desktop ile
+Obsidian'ın başlaması ve doğru vault'un açılması işletim sistemi/uygulama
+ayarlarıdır; bir kez etkinleştirilmelidir.
 
 ## Elle kurulum — yedek yol
 

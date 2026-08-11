@@ -1,6 +1,10 @@
 import json
+import shutil
+import subprocess
 import tomllib
 from pathlib import Path
+
+import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -87,6 +91,10 @@ def test_work_mode_setup_script_is_non_blocking_and_secret_safe():
     assert 'Copy-Item -LiteralPath $Path -Destination $backupPath' in script
     assert 'required = false' in script
     assert '@("build", "--pull", "-t", $ImageName, $repoRoot)' in script
+    assert 'Set-CodexConfiguration -Path $configPath -DockerCommandPath $dockerCommand' in script
+    assert 'command = "$escapedDockerCommand"' in script
+    assert 'INSTALL FAILED: $($_.Exception.Message)' in script
+    assert "This failed run did not write a new Codex configuration." in script
 
     # The permanent environment and non-blocking Codex config are written only
     # after both the real MCP handshake and the required Obsidian probe.
@@ -101,6 +109,115 @@ def test_work_mode_setup_script_is_non_blocking_and_secret_safe():
     assert script.index("Set-CodexConfiguration -Path $configPath") > script.index(
         "await session.list_tools()"
     )
+
+
+def test_double_click_entrypoints_call_only_their_scoped_scripts():
+    expected_scripts = {
+        "INSTALL.cmd": "setup-work-mode.ps1",
+        "CHECK.cmd": "check-work-mode.ps1",
+        "DISABLE.cmd": "disable-project-memory.ps1",
+    }
+
+    for filename, script_name in expected_scripts.items():
+        content = (REPO_ROOT / filename).read_text(encoding="utf-8")
+
+        assert "powershell.exe -NoProfile -ExecutionPolicy Bypass -File" in content
+        assert f'%~dp0scripts\\{script_name}' in content
+        assert "pause" in content
+        assert "exit /b %exitCode%" in content
+        assert "OBSIDIAN_API_KEY=" not in content
+        assert "Bearer " not in content
+
+
+def test_work_mode_check_is_read_only_secret_safe_and_exercises_live_stack():
+    script = (REPO_ROOT / "scripts" / "check-work-mode.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "SetEnvironmentVariable(" not in script
+    assert "WriteAllText(" not in script
+    assert "Copy-Item" not in script
+    assert "Remove-Item" not in script
+    assert 'GetEnvironmentVariable("OBSIDIAN_API_KEY", "User")' in script
+    assert "No API key or vault content will be printed." in script
+    assert "await session.initialize()" in script
+    assert "await session.list_tools()" in script
+    assert "assert len(tools.tools) == 19" in script
+    assert "^1\\.29\\.0\\|mcp-project-memory\\|[^|]+\\|19$" in script
+    assert "client.list_files_in_vault()" in script
+    assert "OBSIDIAN_OK|4.1.7" in script
+    assert '(?m)^required\\s*=\\s*false\\s*$' in script
+    assert '"run",' in script
+    assert '"--rm",' in script
+
+
+def test_emergency_disable_is_scoped_backed_up_and_reversible():
+    script = (REPO_ROOT / "scripts" / "disable-project-memory.ps1").read_text(
+        encoding="utf-8"
+    )
+
+    assert "mcp_servers\\.project_memory" in script
+    assert "Copy-Item -LiteralPath $ConfigPath -Destination $backupPath" in script
+    assert 'Set-BooleanSetting -Block $match.Value -Name "enabled" -Value $false' in script
+    assert 'Set-BooleanSetting -Block $updatedBlock -Name "required" -Value $false' in script
+    assert "Text.UTF8Encoding($false)" in script
+    assert "Run INSTALL.cmd to enable it again." in script
+    assert "Remove-Item" not in script
+    assert "SetEnvironmentVariable(" not in script
+    assert "docker image rm" not in script.lower()
+
+
+@pytest.mark.skipif(shutil.which("powershell.exe") is None, reason="Windows-only helper")
+def test_emergency_disable_preserves_other_config_and_is_idempotent(tmp_path):
+    config_path = tmp_path / "config.toml"
+    original = """\
+[features]
+web_search = true
+
+[mcp_servers.other]
+command = "other-server"
+enabled = true
+
+[mcp_servers.project_memory]
+command = "docker"
+enabled = true
+required = true
+
+[profiles.demo]
+model = "example"
+"""
+    config_path.write_text(original, encoding="utf-8")
+    script_path = REPO_ROOT / "scripts" / "disable-project-memory.ps1"
+    command = [
+        "powershell.exe",
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        str(script_path),
+        "-ConfigPath",
+        str(config_path),
+    ]
+
+    first = subprocess.run(command, capture_output=True, text=True, check=False)
+    assert first.returncode == 0, first.stdout + first.stderr
+
+    updated_bytes = config_path.read_bytes()
+    assert not updated_bytes.startswith(b"\xef\xbb\xbf")
+    updated = tomllib.loads(updated_bytes.decode("utf-8"))
+    assert updated["features"]["web_search"] is True
+    assert updated["mcp_servers"]["other"]["command"] == "other-server"
+    assert updated["mcp_servers"]["other"]["enabled"] is True
+    assert updated["mcp_servers"]["project_memory"]["enabled"] is False
+    assert updated["mcp_servers"]["project_memory"]["required"] is False
+    assert updated["profiles"]["demo"]["model"] == "example"
+    assert len(list(tmp_path.glob("config.toml.backup-*"))) == 1
+
+    after_first_run = config_path.read_bytes()
+    second = subprocess.run(command, capture_output=True, text=True, check=False)
+    assert second.returncode == 0, second.stdout + second.stderr
+    assert config_path.read_bytes() == after_first_run
+    assert len(list(tmp_path.glob("config.toml.backup-*"))) == 1
 
 
 def test_mcp_sdk_uses_current_maintained_v1_release():

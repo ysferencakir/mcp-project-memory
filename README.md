@@ -71,7 +71,7 @@ Set-Location C:\Tools\mcp-project-memory
 API anahtarını repoya, Dockerfile'a, `.codex/config.toml` veya `.mcp.json`
 içine yazmayın.
 
-### 4. Tek komutla Work mode kurulumunu tamamlayın
+### 4. `INSTALL.cmd` ile Work mode kurulumunu tamamlayın
 
 `PROJECT_MEMORY_ROOT`, Obsidian vault'una göreli klasördür:
 
@@ -80,7 +80,13 @@ içine yazmayın.
 - Başında `/` kullanmayın, `..` kullanmayın ve Windows `\` ayıracı
   kullanmayın.
 
-Obsidian açıkken aşağıdaki tek komutu çalıştırın:
+Docker Desktop ve Obsidian açıkken repo kökündeki `INSTALL.cmd` dosyasına çift
+tıklayın. Yalnız iki bilgi sorulur:
+
+1. Vault'a göreli proje hafıza klasörü; vault yalnız bu projeye aitse boş.
+2. Obsidian Local REST API anahtarı; `Bearer ` öneki olmadan.
+
+Komut satırını tercih ederseniz aynı işlem:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\setup-work-mode.ps1
@@ -102,6 +108,18 @@ ve şunları sırayla yapar:
 Kontroller başarısız olursa betik Codex yapılandırmasını değiştirmez. Daha
 önce kayıtlı anahtarı değiştirmek için `-ResetApiKey` ekleyin. Image zaten
 aynı commit'ten oluşturulduysa tekrar denemede `-SkipBuild` kullanılabilir.
+
+Kurulumdan veya bir Windows/Docker güncellemesinden sonra `CHECK.cmd` dosyasına
+çift tıklayarak yapılandırma, Docker, gerçek MCP handshake, 19 araç ve
+Obsidian erişimini sır göstermeden yeniden doğrulayabilirsiniz. Work sohbeti
+beklenmedik biçimde açılmazsa `DISABLE.cmd` yalnız `project_memory` bloğunu
+`enabled = false`, `required = false` yapar; diğer MCP sunucularını, image'ı ve
+vault'u korur. Ardından ChatGPT'yi sistem tepsisi dahil tamamen kapatıp açın.
+`INSTALL.cmd` daha sonra bağlantıyı yeniden etkinleştirir.
+
+Bu üç dosya Docker Desktop, Obsidian veya Local REST API eklentisini kurmaz ve
+ChatGPT'yi zorla kapatmaz. Bu uygulamalar bir kez kurulur; sonraki kurulum ve
+onarım kontrolleri otomatik yapılır.
 
 Yapılandırma `required = false` kullanır. Docker veya project-memory daha sonra
 başlatılamazsa yeni Work sohbetleri yine açılır; yalnız ilgili MCP araçları

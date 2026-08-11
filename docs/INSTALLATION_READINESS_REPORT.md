@@ -1,6 +1,6 @@
 # Kurulum hazır oluş ve risk raporu
 
-Tarih: 2026-08-10
+Son güncelleme: 2026-08-11
 
 Bu rapor V1 hedefini esas alır: tek bilgisayarda, bir Obsidian vault'u
 üzerinden Codex/Work ve daha sonra Claude Code arasında kalıcı proje bağlamı.
@@ -16,19 +16,30 @@ değerlendirmenin dışındadır.
 - MCP initialization talimatı yeni agent'a bağlamı önce yüklemesini ve anlamlı
   iş sonunda checkpoint bırakmasını bildiriyor.
 - Docker runtime kilitli bağımlılıklar ve root olmayan kullanıcıyla çalışıyor.
-- Windows Work mode kurulumu `scripts/setup-work-mode.ps1` ile tek komuta
-  indirildi.
+- Windows Work mode kurulumu kökteki `INSTALL.cmd` ile çift tıklamaya
+  indirildi; kullanıcı yalnız proje kökü ve API anahtarını giriyor.
+- `CHECK.cmd` yapılandırma, Docker, MCP handshake, 19 araç ve authenticated
+  Obsidian erişimini sır göstermeden kontrol ediyor.
+- `DISABLE.cmd`, Work başlangıcını kurtarmak için yalnız `project_memory`
+  bloğunu kapatıyor; diğer MCP sunucuları ve vault korunuyor.
 
 ## Bu incelemede doğrulananlar
 
 - MCP Python SDK `1.29.0` kilitlendi ve temiz ortam senkronizasyonu geçti.
 - Gerçek subprocess stdio `initialize` + `tools/list` entegrasyon testi geçti.
-- Test paketi: 160 başarılı.
+- Test paketi: 164 başarılı.
 - Kod kapsamı: %99.
 - Pyright: 0 hata, 0 uyarı.
 - `pip check`: kırık bağımlılık yok.
 - `uv lock --check`: kilit dosyası güncel.
 - PowerShell kurulum betiği sözdizimi kontrolünden geçti.
+- Üç PowerShell operasyon betiğinin tamamı 5.1 parser kontrolünden geçti.
+- Acil kapatma testi başka MCP tablolarının korunduğunu, UTF-8 BOM
+  eklenmediğini, tek yedek oluştuğunu ve ikinci çalıştırmanın idempotent
+  olduğunu doğruladı.
+- Kurulum, PATH'e güvenmek yerine bulunan gerçek `docker.exe` yolunu Codex
+  config'e yazıyor; Docker erişim hataları kullanıcıya ham hata dökümü olmadan
+  raporlanıyor.
 - Config birleştirme testi diğer MCP sunucusunu ve takip eden TOML tablolarını
   korudu; bir yedek oluşturdu, UTF-8 BOM eklemedi ve ikinci çalıştırmada aynı
   sonucu değiştirmeden bıraktı.
